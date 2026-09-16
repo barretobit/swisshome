@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Swiss Home</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="toast"></div>
+
+    <header class="topbar">
+      <a href="files.html" class="logo small"><span class="cross"></span> Swiss Home</a>
+      <div class="top-actions">
+        <button id="btn-back" type="button" class="btn ghost sm">&larr;</button>
+        <button id="btn-edit" type="button" class="btn ghost sm">Edit</button>
+        <button id="btn-save" type="button" class="btn primary sm">Save</button>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="file-head">
+        <h1 id="file-title"></h1>
+        <span id="save-state" class="save-state"></span>
+      </div>
+      <div id="file-meta" class="file-meta card form" hidden>
+        <label>File name<input id="f-name" type="text" placeholder="e.g. Z&uuml;rich apartments" /></label>
+        <label>Code<input id="f-code" type="text" required /></label>
+      </div>
+      <div class="table-wrap card">
+        <table id="homes-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Address</th>
+              <th>Price</th>
+              <th>m&sup2;</th>
+              <th>Rooms</th>
+              <th>Status</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="homes-body"></tbody>
+        </table>
+        <p id="empty-state" class="empty" hidden>No homes yet &mdash; add your first one.</p>
+      </div>
+      <div class="table-actions">
+        <button id="btn-add" type="button" class="btn sm primary">+ Add home</button>
+      </div>
+
+      <h2>Scheduled Visits</h2>
+      <div class="table-wrap card">
+        <table id="visits-table">
+          <thead>
+            <tr>
+              <th>Property</th>
+              <th>Address</th>
+              <th>Date</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="visits-body"></tbody>
+        </table>
+        <p id="visits-empty" class="empty" hidden>No upcoming visits.</p>
+      </div>
+    </main>
+
+    <script src="common.js"></script>
+    <script src="file.js"></script>
+  </body>
+</html>

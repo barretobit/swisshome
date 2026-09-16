@@ -1,0 +1,54 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>Swiss Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toast"></div>
+
+  <header class="topbar">
+    <a href="files.html" class="logo small"><span class="cross"></span> Swiss Home</a>
+    <div class="top-actions">
+      <button id="btn-back" type="button" class="btn ghost sm">&larr; Back</button>
+      <button id="btn-edit" type="button" class="btn primary sm">Edit</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1 id="v-title"></h1>
+    <div class="view-grid">
+      <section class="card">
+        <h2>Info</h2>
+        <div id="v-details"></div>
+        <div id="v-notes-wrap" class="notes-wrap" hidden>
+          <h3>Notes</h3>
+          <p id="v-notes" class="prewrap"></p>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Scheduled visits</h2>
+        <ul id="v-visits" class="plain-list"></ul>
+        <p id="v-visits-empty" class="empty small">No visits yet.</p>
+      </section>
+      <section class="card">
+        <h2>Map</h2>
+        <div id="v-map"></div>
+      </section>
+      <section class="card">
+        <h2>Directions to Zurich HB</h2>
+        <div id="v-directions"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="homeview.js"></script>
+</body>
+</html>

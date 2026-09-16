@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>Swiss Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toast"></div>
+
+  <section id="view" class="view" hidden>
+    <header class="topbar">
+      <a href="files.html" class="logo small"><span class="cross"></span> Swiss Home</a>
+      <button id="btn-signout" type="button" class="btn ghost sm">Sign out</button>
+    </header>
+    <main class="wrap">
+      <h1>Your files</h1>
+      <div id="file-list" class="file-list"><p class="empty">Loading&hellip;</p></div>
+      <form id="create-form" class="card">
+        <h2>New file</h2>
+        <label>Unique code<input id="create-code" type="text" placeholder="e.g. zuerich-apartments" required></label>
+        <button type="submit" class="btn primary">Create file</button>
+      </form>
+    </main>
+  </section>
+
+  <div id="delete-modal" class="modal" hidden>
+    <div class="modal-box card">
+      <h2>Delete file</h2>
+      <p>You are about to permanently delete <strong id="del-code"></strong>. This cannot be undone.</p>
+      <p>Type <code>i am pretty pretty sure</code> to confirm:</p>
+      <input id="del-confirm" type="text" autocomplete="off">
+      <div class="modal-actions">
+        <button id="del-cancel" type="button" class="btn ghost">Cancel</button>
+        <button id="del-go" type="button" class="btn danger" disabled>Delete file</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="common.js"></script>
+  <script src="files.js"></script>
+</body>
+</html>
