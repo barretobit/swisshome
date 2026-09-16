@@ -19,8 +19,16 @@ function fillForm(home) {
   document.getElementById("f-built").value = home.built ?? "";
   document.getElementById("f-renovated").value = home.renovated ?? "";
   document.getElementById("f-url").value = home.url || "";
+  document.getElementById("f-main-image").value = home.mainImage || "";
   document.getElementById("f-status").value = home.status || "";
   document.getElementById("f-notes").value = home.notes || "";
+  document.getElementById("f-realtor").value = home.realtorName || "";
+  document.getElementById("f-realtor-phone").value = home.realtorPhone || "";
+  document.getElementById("f-realtor-email").value = home.realtorEmail || "";
+  document.getElementById("f-garage").checked = !!home.garage;
+  document.getElementById("f-garage-included").checked = !!home.garageIncluded;
+  document.getElementById("f-garage-price").value = home.garagePrice ?? "";
+  updateGarageUI();
   state.visits = Array.isArray(home.visits) ? home.visits.map((v) => ({ ...v })) : [];
   renderVisits();
 }
@@ -95,6 +103,20 @@ async function init() {
   }
 }
 
+function updateGarageUI() {
+  const has = document.getElementById("f-garage").checked;
+  const included = document.getElementById("f-garage-included").checked;
+  document.getElementById("garage-extra").hidden = !has;
+  document.getElementById("garage-value-wrap").hidden = !has || included;
+  if (!has) {
+    document.getElementById("f-garage-included").checked = false;
+    document.getElementById("f-garage-price").value = "";
+  }
+}
+
+document.getElementById("f-garage").addEventListener("change", updateGarageUI);
+document.getElementById("f-garage-included").addEventListener("change", updateGarageUI);
+
 document.getElementById("btn-add-visit").addEventListener("click", () => {
   const date = document.getElementById("v-date").value;
   const time = document.getElementById("v-time").value;
@@ -127,8 +149,15 @@ document.getElementById("home-form").addEventListener("submit", (e) => {
     built: parseNum(document.getElementById("f-built").value),
     renovated: parseNum(document.getElementById("f-renovated").value),
     url: document.getElementById("f-url").value.trim(),
+    mainImage: document.getElementById("f-main-image").value.trim(),
     status: document.getElementById("f-status").value,
     notes: document.getElementById("f-notes").value.trim(),
+    realtorName: document.getElementById("f-realtor").value.trim(),
+    realtorPhone: document.getElementById("f-realtor-phone").value.trim(),
+    realtorEmail: document.getElementById("f-realtor-email").value.trim(),
+    garage: document.getElementById("f-garage").checked,
+    garageIncluded: document.getElementById("f-garage-included").checked,
+    garagePrice: parseNum(document.getElementById("f-garage-price").value),
     visits: state.visits.map((v) => ({ ...v })),
   };
   const i = homes.findIndex((h) => h.id === home.id);

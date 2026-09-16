@@ -30,16 +30,19 @@
       <div id="file-meta" class="file-meta card form" hidden>
         <label>File name<input id="f-name" type="text" placeholder="e.g. Z&uuml;rich apartments" /></label>
         <label>Code<input id="f-code" type="text" required /></label>
+        <label class="c2">Combined Gross Income (CHF, annual)<input id="f-income" type="number" min="0" step="1000" placeholder="150000 per year" /></label>
       </div>
       <div class="table-wrap card">
         <table id="homes-table">
           <thead>
             <tr>
-              <th>Title</th>
+              <th>Image</th>
+              <th class="main-col">Title</th>
               <th>Address</th>
               <th>Price</th>
-              <th>m&sup2;</th>
               <th>Rooms</th>
+              <th>Realtor</th>
+              <th>Phone</th>
               <th>Status</th>
               <th class="right">Actions</th>
             </tr>

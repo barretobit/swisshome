@@ -1,9 +1,16 @@
-const state = { code: "", name: "", homes: [], dirty: false };
+const state = { code: "", name: "", homes: [], dirty: false, settings: { combinedIncome: null } };
 
-const STATUS_STYLE = { "To visit": "blue", Visited: "green", Applied: "amber", "Not interested": "gray" };
+const STATUS_STYLE = {
+  "Awaiting Information": "gray",
+  "Applied for Visit": "amber",
+  "In Contact": "blue",
+  "To Visit": "green",
+  Rejected: "red",
+  Thinking: "amber",
+};
 
 function saveDraft() {
-  setDraft(state.code, { name: state.name, homes: state.homes });
+  setDraft(state.code, { name: state.name, homes: state.homes, settings: state.settings });
 }
 
 function setTitle() {
@@ -91,7 +98,20 @@ function renderTable() {
     const tr = document.createElement("tr");
     const address = [home.street, [home.zip, home.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
+    const cellImg = document.createElement("td");
+    if (home.mainImage && /^https?:\/\//i.test(home.mainImage)) {
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.src = home.mainImage;
+      img.alt = (home.title || "Home") + " thumbnail";
+      img.loading = "lazy";
+      img.onerror = () => {
+        img.style.display = "none";
+      };
+      cellImg.appendChild(img);
+    }
     const cellTitle = document.createElement("td");
+    cellTitle.className = "main-col";
     cellTitle.textContent = home.title || "Untitled";
     const cellAddress = document.createElement("td");
     cellAddress.className = "muted";
@@ -99,12 +119,14 @@ function renderTable() {
     const cellPrice = document.createElement("td");
     cellPrice.className = "num";
     cellPrice.textContent = fmtPrice(home.price);
-    const cellSize = document.createElement("td");
-    cellSize.className = "num";
-    cellSize.textContent = fmtSize(home.size);
     const cellRooms = document.createElement("td");
     cellRooms.className = "num";
     cellRooms.textContent = fmtRooms(home.rooms);
+    const cellRealtor = document.createElement("td");
+    cellRealtor.textContent = home.realtorName || "\u2014";
+    const cellPhone = document.createElement("td");
+    cellPhone.className = "muted";
+    cellPhone.textContent = home.realtorPhone || "\u2014";
     const cellStatus = document.createElement("td");
     const badge = document.createElement("span");
     badge.className = "badge";
@@ -137,11 +159,13 @@ function renderTable() {
     cellActions.appendChild(btnEdit);
     cellActions.appendChild(btnDel);
 
+    tr.appendChild(cellImg);
     tr.appendChild(cellTitle);
     tr.appendChild(cellAddress);
     tr.appendChild(cellPrice);
-    tr.appendChild(cellSize);
     tr.appendChild(cellRooms);
+    tr.appendChild(cellRealtor);
+    tr.appendChild(cellPhone);
     tr.appendChild(cellStatus);
     tr.appendChild(cellActions);
     tr.addEventListener("click", () => goHome(i));
@@ -162,6 +186,10 @@ function wireMeta() {
   });
   codeEl.addEventListener("input", () => {
     if (codeEl.value.trim() !== state.code) markDirty();
+  });
+  document.getElementById("f-income").addEventListener("input", (e) => {
+    state.settings.combinedIncome = parseNum(e.target.value);
+    markDirty();
   });
 }
 
@@ -186,7 +214,7 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     return;
   }
   const renamed = newCode !== state.code;
-  const data = { name: newName, homes: state.homes };
+  const data = { name: newName, homes: state.homes, settings: state.settings };
 
   btn.disabled = true;
   btn.textContent = "Saving\u2026";
@@ -247,6 +275,7 @@ async function init() {
     const arr = Array.isArray(draft);
     homes = arr ? draft : draft.homes || [];
     state.name = arr ? "" : draft.name || "";
+    state.settings = arr || !draft.settings ? { combinedIncome: null } : draft.settings;
     dirty = true;
   } else {
     try {
@@ -254,6 +283,7 @@ async function init() {
       const data = res && res.json && typeof res.json === "object" ? res.json : {};
       homes = Array.isArray(data.homes) ? data.homes : [];
       state.name = typeof data.name === "string" ? data.name : "";
+      state.settings = data.settings || { combinedIncome: null };
     } catch (err) {
       if (err.message === "Invalid credentials.") {
         signOut();
@@ -262,6 +292,7 @@ async function init() {
       toast(err.message, false);
       homes = [];
       state.name = "";
+      state.settings = { combinedIncome: null };
     }
   }
   state.homes = homes;
@@ -270,6 +301,7 @@ async function init() {
   wireMeta();
   document.getElementById("f-code").value = state.code;
   document.getElementById("f-name").value = state.name;
+  document.getElementById("f-income").value = state.settings.combinedIncome ?? "";
   setTitle();
   renderTable();
 }

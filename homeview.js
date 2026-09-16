@@ -1,4 +1,13 @@
-const state = { code: "", id: null };
+const state = { code: "", id: null, settings: {} };
+
+const STATUS_STYLE = {
+  "Awaiting Information": "gray",
+  "Applied for Visit": "amber",
+  "In Contact": "blue",
+  "To Visit": "green",
+  Rejected: "red",
+  Thinking: "amber",
+};
 
 function detailRow(label, value) {
   const row = document.createElement("div");
@@ -23,11 +32,64 @@ function mapFrame(src) {
   return frame;
 }
 
+function renderFinance(home) {
+  const el = document.getElementById("v-finance");
+  el.innerHTML = "";
+  const price = home.price || 0;
+  let extra = 0;
+  if (home.garage && !home.garageIncluded && home.garagePrice != null) extra = home.garagePrice;
+  const total = price + extra;
+
+  el.appendChild(detailRow("Purchase price", fmtPrice(price)));
+  if (extra > 0) el.appendChild(detailRow("Garage (extra)", fmtPrice(extra)));
+  el.appendChild(detailRow("Total value", fmtPrice(total)));
+  el.appendChild(detailRow("Closing costs (0.25%)", fmtPrice(total * 0.0025)));
+
+  const income = state.settings && state.settings.combinedIncome;
+  if (income && income > 0) {
+    const mortgage = total * 0.8;
+    const second = Math.max(0, mortgage - total * 0.67);
+    const interest = mortgage * 0.05;
+    const amort = second / 15;
+    const ancillary = total * 0.01;
+    const housingCosts = interest + amort + ancillary;
+    const pct = (housingCosts / income) * 100;
+
+    el.appendChild(detailRow("Mortgage (80%)", fmtPrice(mortgage)));
+    el.appendChild(detailRow("Imputed interest (5%)", fmtPrice(interest)));
+    el.appendChild(detailRow("Amortization 2nd mortgage", fmtPrice(amort)));
+    el.appendChild(detailRow("Ancillary costs (1%)", fmtPrice(ancillary)));
+    el.appendChild(detailRow("Housing costs / year", fmtPrice(housingCosts)));
+    el.appendChild(detailRow("Affordability", pct.toLocaleString("en-CH", { maximumFractionDigits: 1 }) + " % of annual gross income"));
+    el.appendChild(detailRow("Verdict", pct <= 33 ? "Affordable (\u2264 33%)" : "Not affordable (limit \u2264 33%)"));
+  } else {
+    const p = document.createElement("p");
+    p.className = "empty small";
+    p.textContent = "Set your Combined Gross Income in the file settings to see affordability.";
+    el.appendChild(p);
+  }
+
+  el.appendChild(detailRow("20% down payment", fmtPrice(total * 0.2)));
+  el.appendChild(detailRow("25% down payment", fmtPrice(total * 0.25)));
+}
+
 function render(home) {
   document.getElementById("v-title").textContent = home.title || "Untitled";
 
   const details = document.getElementById("v-details");
   details.innerHTML = "";
+
+  if (home.mainImage && /^https?:\/\//i.test(home.mainImage)) {
+    const img = document.createElement("img");
+    img.className = "main-image";
+    img.src = home.mainImage;
+    img.alt = (home.title || "Home") + " main image";
+    img.loading = "lazy";
+    img.onerror = () => {
+      img.style.display = "none";
+    };
+    details.appendChild(img);
+  }
 
   const address = [home.street, [home.zip, home.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   if (address) details.appendChild(detailRow("Address", address));
@@ -38,11 +100,26 @@ function render(home) {
   if (home.built) details.appendChild(detailRow("Built", String(home.built)));
   if (home.renovated) details.appendChild(detailRow("Last renovation", String(home.renovated)));
 
+  if (home.realtorName) details.appendChild(detailRow("Realtor name", home.realtorName));
+  if (home.realtorPhone) details.appendChild(detailRow("Realtor phone", home.realtorPhone));
+  if (home.realtorEmail) {
+    const mail = document.createElement("a");
+    mail.href = "mailto:" + home.realtorEmail;
+    mail.textContent = home.realtorEmail;
+    details.appendChild(detailRow("Realtor email", mail));
+  }
+
+  let garageText = "No";
+  if (home.garage) {
+    garageText = home.garageIncluded ? "Yes (included in price)" : home.garagePrice != null ? "Yes (+ " + fmtPrice(home.garagePrice) + ")" : "Yes";
+  }
+  details.appendChild(detailRow("Garage", garageText));
+
   const status = home.status || "";
   const badge = document.createElement("span");
   badge.className = "badge";
   badge.textContent = status || "\u2014";
-  if (status) badge.classList.add({ "To visit": "blue", Visited: "green", Applied: "amber", "Not interested": "gray" }[status] || "gray");
+  if (status) badge.classList.add(STATUS_STYLE[status] || "gray");
   details.appendChild(detailRow("Status", badge));
 
   if (home.url && /^https?:\/\//i.test(home.url)) {
@@ -98,6 +175,8 @@ function render(home) {
     mapEl.appendChild(p.cloneNode(true));
     dirEl.appendChild(p);
   }
+
+  renderFinance(home);
 }
 
 async function init() {
@@ -118,6 +197,7 @@ async function init() {
       const res = await getFile(creds.user, creds.password, code);
       const data = res && res.json && typeof res.json === "object" ? res.json : {};
       saved = Array.isArray(data.homes) ? data.homes : [];
+      state.settings = data.settings || {};
     } catch (err) {
       if (err.message === "Invalid credentials.") {
         signOut();
@@ -126,7 +206,9 @@ async function init() {
       toast(err.message, false);
     }
     homes = saved;
-    setDraft(code, { name: "", homes });
+    setDraft(code, { name: "", homes, settings: state.settings });
+  } else {
+    state.settings = (d && !Array.isArray(d) && d.settings) || {};
   }
   const home = homes.find((h) => h.id === state.id);
   if (!home) {

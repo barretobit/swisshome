@@ -143,12 +143,18 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.right, th.right { text-align: right; }
 td.right { white-space: nowrap; }
 td.right .btn + .btn { margin-left: 6px; }
+.thumb { display: block; width: 36px; height: 36px; object-fit: cover; border-radius: 7px; }
+.main-col { width: 34%; white-space: normal; }
 
-.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; }
 .badge.blue { background: #e8f0fe; color: #1a73e8; }
 .badge.green { background: #e6f4ea; color: #1e8e3e; }
 .badge.amber { background: #fef7e0; color: #b06000; }
 .badge.gray { background: #f1f3f4; color: #5f6368; }
+.badge.red { background: #fce8e6; color: #c5221f; }
+
+.check { display: flex; align-items: center; gap: 10px; }
+.check input { width: auto; margin: 0; flex: none; accent-color: var(--accent); }
 
 .save-state { color: var(--muted); font-size: 0.85rem; }
 .save-state.dirty { color: #b06000; font-weight: 600; }
@@ -196,6 +202,7 @@ code { background: #f1f3f4; padding: 2px 6px; border-radius: 6px; font-size: 0.9
 .prewrap { white-space: pre-wrap; }
 .plain-list { margin: 0; padding-left: 18px; color: var(--muted); }
 .map-frame { width: 100%; height: 320px; border: 0; border-radius: 12px; }
+.main-image { display: block; width: 100%; max-height: 320px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; }
 .notes-wrap { margin-top: 14px; }
 .notes-wrap h3 { font-size: 1rem; font-weight: 600; margin: 0 0 6px; }
 .view-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
