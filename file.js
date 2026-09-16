@@ -184,11 +184,11 @@ function renderTable() {
 
     tr.appendChild(cellImg);
     tr.appendChild(cellTitle);
+    tr.appendChild(cellRealtor);
+    tr.appendChild(cellPhone);
     tr.appendChild(cellAddress);
     tr.appendChild(cellPrice);
     tr.appendChild(cellRooms);
-    tr.appendChild(cellRealtor);
-    tr.appendChild(cellPhone);
     tr.appendChild(cellStatus);
     tr.appendChild(cellActions);
     tr.addEventListener("click", () => goView(i));
