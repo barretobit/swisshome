@@ -22,7 +22,7 @@
       </div>
     </header>
 
-    <main class="wrap">
+    <main class="wrap wide">
       <div class="file-head">
         <h1 id="file-title"></h1>
         <span id="save-state" class="save-state"></span>
@@ -31,6 +31,9 @@
         <label>File name<input id="f-name" type="text" placeholder="e.g. Z&uuml;rich apartments" /></label>
         <label>Code<input id="f-code" type="text" required /></label>
         <label class="c2">Combined Gross Income (CHF, annual)<input id="f-income" type="number" min="0" step="1000" placeholder="150000 per year" /></label>
+      </div>
+      <div class="table-tools">
+        <input id="search" type="search" class="search-input" placeholder="Search city, postal code or realtor&hellip;">
       </div>
       <div class="table-wrap card">
         <table id="homes-table">
@@ -52,7 +55,7 @@
         <p id="empty-state" class="empty" hidden>No homes yet &mdash; add your first one.</p>
       </div>
       <div class="table-actions">
-        <button id="btn-add" type="button" class="btn sm primary">+ Add home</button>
+        <button id="btn-add" type="button" class="btn sm primary">+ Add Home</button>
       </div>
 
       <h2>Scheduled Visits</h2>
@@ -62,6 +65,7 @@
             <tr>
               <th>Property</th>
               <th>Address</th>
+              <th>Realtor</th>
               <th>Date</th>
               <th>Time</th>
             </tr>

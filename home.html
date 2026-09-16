@@ -21,11 +21,12 @@
   <main class="wrap">
     <h1 id="home-heading">New home</h1>
     <form id="home-form" class="card form">
+      <h2 class="form-section">Property</h2>
       <label class="c2">Title<input id="f-title" type="text" placeholder="3.5-Zimmer Neubau mit Seeblick" required></label>
       <label class="c2">Street<input id="f-street" type="text" placeholder="Bahnhofstrasse 12"></label>
       <label>ZIP<input id="f-zip" type="text" inputmode="numeric" maxlength="4" placeholder="8000"></label>
       <label>City<input id="f-city" type="text" placeholder="Z&uuml;rich"></label>
-      <label>Canton
+      <label class="c2">Canton
         <select id="f-canton">
           <option value="">&mdash;</option>
           <option value="ZH">Z&uuml;rich (ZH)</option>
@@ -56,19 +57,20 @@
           <option value="JU">Jura (JU)</option>
         </select>
       </label>
-      <label>Realtor Name<input id="f-realtor" type="text" placeholder="Jane Doe"></label>
-      <label>Realtor Phone<input id="f-realtor-phone" type="tel" placeholder="+41 79 123 45 67"></label>
-      <label class="c2">Realtor Email<input id="f-realtor-email" type="email" placeholder="jane@immob.ch"></label>
+      <label>Size (m&sup2;)<input id="f-size" type="number" min="0" step="1" placeholder="120"></label>
+      <label>Rooms<input id="f-rooms" type="number" min="0" step="0.5" placeholder="3.5"></label>
+      <label>Built year<input id="f-built" type="number" min="1500" max="2100" placeholder="2019"></label>
+      <label>Last renovation year<input id="f-renovated" type="number" min="1500" max="2100" placeholder="2024"></label>
+
+      <h2 class="form-section">Price &amp; Costs</h2>
       <label>Price (CHF)<input id="f-price" type="number" min="0" step="1000" placeholder="2350000"></label>
       <label class="check c2"><input id="f-garage" type="checkbox"> Has garage</label>
       <div id="garage-extra" class="c2">
         <label class="check"><input id="f-garage-included" type="checkbox"> Garage price included in home price</label>
         <label id="garage-value-wrap" hidden>Garage price (CHF)<input id="f-garage-price" type="number" min="0" step="1000" placeholder="50000"></label>
       </div>
-      <label>Size (m&sup2;)<input id="f-size" type="number" min="0" step="1" placeholder="120"></label>
-      <label>Rooms<input id="f-rooms" type="number" min="0" step="0.5" placeholder="3.5"></label>
-      <label>Built year<input id="f-built" type="number" min="1500" max="2100" placeholder="2019"></label>
-      <label>Last renovation year<input id="f-renovated" type="number" min="1500" max="2100" placeholder="2024"></label>
+
+      <h2 class="form-section">Listing &amp; Status</h2>
       <label class="c2">Listing URL<input id="f-url" type="url" placeholder="https://www.immoscout24.ch/&hellip;"></label>
       <label class="c2">Main Image URL<input id="f-main-image" type="url" placeholder="https://static.immoscout.ch/&hellip;"></label>
       <label class="c2">Status
@@ -82,13 +84,25 @@
           <option>Thinking</option>
         </select>
       </label>
+
+      <h2 class="form-section">Realtor contact</h2>
+      <label>Realtor Name<input id="f-realtor" type="text" placeholder="Jane Doe"></label>
+      <label>Realtor Phone
+        <span class="phone-input">
+          <span class="phone-prefix">+41</span>
+          <input id="f-realtor-phone" type="tel" inputmode="tel" placeholder="79 123 45 67" autocomplete="off">
+        </span>
+      </label>
+      <label class="c2">Realtor Email<input id="f-realtor-email" type="email" placeholder="jane@immob.ch"></label>
+
+      <h2 class="form-section">Notes</h2>
       <label class="c2">Notes<textarea id="f-notes" rows="4" placeholder="Contact person, viewing dates, pros &amp; cons&hellip;"></textarea></label>
       <div class="c2 form-actions">
         <button type="submit" class="btn primary">Save home</button>
       </div>
     </form>
 
-    <div class="card">
+    <div class="card visits-card">
       <h2>Visits</h2>
       <div id="visits-list" class="visits-list"><p class="empty small">No visits yet.</p></div>
       <div class="visits-add">

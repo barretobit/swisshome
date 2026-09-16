@@ -23,7 +23,7 @@ function fillForm(home) {
   document.getElementById("f-status").value = home.status || "";
   document.getElementById("f-notes").value = home.notes || "";
   document.getElementById("f-realtor").value = home.realtorName || "";
-  document.getElementById("f-realtor-phone").value = home.realtorPhone || "";
+  document.getElementById("f-realtor-phone").value = home.realtorPhone ? String(home.realtorPhone).replace(/\s+/g, "").replace(/^\+41/, "") : "";
   document.getElementById("f-realtor-email").value = home.realtorEmail || "";
   document.getElementById("f-garage").checked = !!home.garage;
   document.getElementById("f-garage-included").checked = !!home.garageIncluded;
@@ -136,6 +136,7 @@ document.getElementById("home-form").addEventListener("submit", (e) => {
   if (Array.isArray(d)) d = { name: "", homes: d };
   d = d || { name: "", homes: [] };
   const homes = Array.isArray(d.homes) ? d.homes : [];
+  const phoneRaw = document.getElementById("f-realtor-phone").value.replace(/\s+/g, "").replace(/^\+41/, "");
   const home = {
     id: state.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     title: document.getElementById("f-title").value.trim(),
@@ -153,7 +154,7 @@ document.getElementById("home-form").addEventListener("submit", (e) => {
     status: document.getElementById("f-status").value,
     notes: document.getElementById("f-notes").value.trim(),
     realtorName: document.getElementById("f-realtor").value.trim(),
-    realtorPhone: document.getElementById("f-realtor-phone").value.trim(),
+    realtorPhone: phoneRaw ? "+41" + phoneRaw : "",
     realtorEmail: document.getElementById("f-realtor-email").value.trim(),
     garage: document.getElementById("f-garage").checked,
     garageIncluded: document.getElementById("f-garage-included").checked,

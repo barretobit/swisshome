@@ -24,12 +24,129 @@ function detailRow(label, value) {
   return row;
 }
 
-function mapFrame(src) {
+function lazyMapFrame(container, src) {
   const frame = document.createElement("iframe");
   frame.className = "map-frame";
   frame.loading = "lazy";
-  frame.src = src;
-  return frame;
+  frame.tabIndex = -1;
+  container.appendChild(frame);
+  if (!("IntersectionObserver" in window)) {
+    frame.src = src;
+    return;
+  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          frame.src = src;
+          io.disconnect();
+        }
+      });
+    },
+    { rootMargin: "300px" }
+  );
+  io.observe(container);
+}
+
+function affordabilityPct(total, income, equityPct) {
+  const mortgage = total * (1 - equityPct);
+  const second = Math.max(0, mortgage - total * 0.67);
+  const interest = mortgage * 0.05;
+  const amort = second / 15;
+  const ancillary = total * 0.01;
+  return ((interest + amort + ancillary) / income) * 100;
+}
+
+function financeRow(label, value) {
+  const row = document.createElement("div");
+  row.className = "finance-row";
+  const l = document.createElement("span");
+  l.textContent = label;
+  const v = document.createElement("span");
+  v.textContent = value;
+  row.appendChild(l);
+  row.appendChild(v);
+  return row;
+}
+
+function downCell(label, amount, total, income, equityPct) {
+  const cell = document.createElement("div");
+  cell.className = "finance-cell";
+  const head = document.createElement("div");
+  head.className = "finance-head";
+  head.textContent = label;
+  cell.appendChild(head);
+  cell.appendChild(financeRow("Total", fmtPrice(amount)));
+  cell.appendChild(financeRow("Single", fmtPrice(amount / 2)));
+  if (income && income > 0) {
+    const pct = affordabilityPct(total, income, equityPct);
+    const row = document.createElement("div");
+    row.className = "finance-afford " + (pct <= 33 ? "ok" : "bad");
+    const rl = document.createElement("span");
+    rl.textContent = "Affordability";
+    const rv = document.createElement("span");
+    rv.className = "finance-value";
+    rv.textContent = (pct <= 33 ? "Yes" : "No") + " (" + pct.toLocaleString("en-CH", { maximumFractionDigits: 1 }) + "%)";
+    row.appendChild(rl);
+    row.appendChild(rv);
+    cell.appendChild(row);
+  }
+  return cell;
+}
+
+function mortgageCell(label, total, equityPct) {
+  const cell = document.createElement("div");
+  cell.className = "finance-cell";
+  const head = document.createElement("div");
+  head.className = "finance-head";
+  head.textContent = label;
+  cell.appendChild(head);
+
+  const mortgage = total * (1 - equityPct);
+  const second = Math.max(0, mortgage - total * 0.67);
+
+  const all = document.createElement("div");
+  const rateWrap = document.createElement("div");
+  rateWrap.className = "finance-row";
+  const rateLabel = document.createElement("span");
+  rateLabel.textContent = "Interest rate";
+  const rateValue = document.createElement("span");
+  rateValue.className = "finance-value";
+  rateWrap.appendChild(rateLabel);
+  rateWrap.appendChild(rateValue);
+  all.appendChild(rateWrap);
+
+  const slider = document.createElement("input");
+  slider.type = "range";
+  slider.className = "rate-slider";
+  slider.min = "0.6";
+  slider.max = "2.0";
+  slider.step = "0.1";
+  slider.value = "0.7";
+  all.appendChild(slider);
+
+  const payRow = document.createElement("div");
+  payRow.className = "finance-row";
+  const payLabel = document.createElement("span");
+  payLabel.textContent = "Monthly payment";
+  const payValue = document.createElement("span");
+  payValue.className = "finance-value";
+  payRow.appendChild(payLabel);
+  payRow.appendChild(payValue);
+  all.appendChild(payRow);
+
+  function update() {
+    const rate = parseFloat(slider.value);
+    rateValue.textContent = String(rate) + "%";
+    const interest = (mortgage * rate) / 100;
+    const amort = second / 15;
+    payValue.textContent = fmtPrice((interest + amort) / 12) + " / month";
+  }
+  slider.addEventListener("input", update);
+  update();
+
+  cell.appendChild(all);
+  return cell;
 }
 
 function renderFinance(home) {
@@ -46,31 +163,66 @@ function renderFinance(home) {
   el.appendChild(detailRow("Closing costs (0.25%)", fmtPrice(total * 0.0025)));
 
   const income = state.settings && state.settings.combinedIncome;
-  if (income && income > 0) {
-    const mortgage = total * 0.8;
-    const second = Math.max(0, mortgage - total * 0.67);
-    const interest = mortgage * 0.05;
-    const amort = second / 15;
-    const ancillary = total * 0.01;
-    const housingCosts = interest + amort + ancillary;
-    const pct = (housingCosts / income) * 100;
+  const grid = document.createElement("div");
+  grid.className = "finance-grid";
+  grid.appendChild(downCell("20% Down Payment", total * 0.2, total, income, 0.2));
+  grid.appendChild(downCell("25% Down Payment", total * 0.25, total, income, 0.25));
+  el.appendChild(grid);
 
-    el.appendChild(detailRow("Mortgage (80%)", fmtPrice(mortgage)));
-    el.appendChild(detailRow("Imputed interest (5%)", fmtPrice(interest)));
-    el.appendChild(detailRow("Amortization 2nd mortgage", fmtPrice(amort)));
-    el.appendChild(detailRow("Ancillary costs (1%)", fmtPrice(ancillary)));
-    el.appendChild(detailRow("Housing costs / year", fmtPrice(housingCosts)));
-    el.appendChild(detailRow("Affordability", pct.toLocaleString("en-CH", { maximumFractionDigits: 1 }) + " % of annual gross income"));
-    el.appendChild(detailRow("Verdict", pct <= 33 ? "Affordable (\u2264 33%)" : "Not affordable (limit \u2264 33%)"));
-  } else {
+  const mGrid = document.createElement("div");
+  mGrid.className = "finance-grid mortgage-grid";
+  mGrid.appendChild(mortgageCell("20% Mortgage", total, 0.2));
+  mGrid.appendChild(mortgageCell("25% Mortgage", total, 0.25));
+  el.appendChild(mGrid);
+
+  if (!(income && income > 0)) {
     const p = document.createElement("p");
     p.className = "empty small";
     p.textContent = "Set your Combined Gross Income in the file settings to see affordability.";
     el.appendChild(p);
   }
+}
 
-  el.appendChild(detailRow("20% down payment", fmtPrice(total * 0.2)));
-  el.appendChild(detailRow("25% down payment", fmtPrice(total * 0.25)));
+function realtorCell(label, value) {
+  const cell = document.createElement("div");
+  cell.className = "realtor-cell";
+  const l = document.createElement("div");
+  l.className = "detail-label";
+  l.textContent = label;
+  const v = document.createElement("div");
+  v.className = "detail-value";
+  if (typeof value === "string") v.textContent = value;
+  else if (value instanceof Node) v.appendChild(value);
+  cell.appendChild(l);
+  cell.appendChild(v);
+  return cell;
+}
+
+function renderRealtor(home) {
+  const card = document.getElementById("v-realtor-card");
+  const wrap = document.getElementById("v-realtor");
+  if (!home.realtorName && !home.realtorPhone && !home.realtorEmail) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  wrap.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "realtor-grid";
+  if (home.realtorName) grid.appendChild(realtorCell("Name", home.realtorName));
+  if (home.realtorPhone) {
+    const tel = document.createElement("a");
+    tel.href = "tel:" + String(home.realtorPhone).replace(/\s+/g, "");
+    tel.textContent = home.realtorPhone;
+    grid.appendChild(realtorCell("Phone", tel));
+  }
+  if (home.realtorEmail) {
+    const mail = document.createElement("a");
+    mail.href = "mailto:" + home.realtorEmail;
+    mail.textContent = home.realtorEmail;
+    grid.appendChild(realtorCell("Email", mail));
+  }
+  wrap.appendChild(grid);
 }
 
 function render(home) {
@@ -99,15 +251,6 @@ function render(home) {
   details.appendChild(detailRow("Rooms", fmtRooms(home.rooms)));
   if (home.built) details.appendChild(detailRow("Built", String(home.built)));
   if (home.renovated) details.appendChild(detailRow("Last renovation", String(home.renovated)));
-
-  if (home.realtorName) details.appendChild(detailRow("Realtor name", home.realtorName));
-  if (home.realtorPhone) details.appendChild(detailRow("Realtor phone", home.realtorPhone));
-  if (home.realtorEmail) {
-    const mail = document.createElement("a");
-    mail.href = "mailto:" + home.realtorEmail;
-    mail.textContent = home.realtorEmail;
-    details.appendChild(detailRow("Realtor email", mail));
-  }
 
   let garageText = "No";
   if (home.garage) {
@@ -139,19 +282,6 @@ function render(home) {
     notesWrap.hidden = true;
   }
 
-  const ul = document.getElementById("v-visits");
-  ul.innerHTML = "";
-  const visits = (Array.isArray(home.visits) ? home.visits : []).slice().sort((a, b) => ((a.date + a.time || "") < (b.date + b.time || "") ? -1 : 1));
-  document.getElementById("v-visits-empty").hidden = visits.length > 0;
-  visits.forEach((v) => {
-    const li = document.createElement("li");
-    const d = v.date ? new Date(v.date + "T" + (v.time || "00:00")) : null;
-    li.textContent =
-      (d ? d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "") +
-      (v.time ? ", " + v.time : "");
-    ul.appendChild(li);
-  });
-
   const parts = [];
   if (home.street) parts.push(home.street);
   const zipCity = [home.zip, home.city].filter(Boolean).join(" ");
@@ -166,8 +296,8 @@ function render(home) {
   dirEl.innerHTML = "";
   if (parts.length > 1) {
     const origin = encodeURIComponent(query);
-    mapEl.appendChild(mapFrame("https://www.google.com/maps?q=" + origin + "&output=embed"));
-    dirEl.appendChild(mapFrame("https://maps.google.com/maps?saddr=" + origin + "&daddr=" + encodeURIComponent("Zurich Hauptbahnhof, Switzerland") + "&output=embed"));
+    lazyMapFrame(mapEl, "https://www.google.com/maps?q=" + origin + "&output=embed");
+    lazyMapFrame(dirEl, "https://maps.google.com/maps?saddr=" + origin + "&daddr=" + encodeURIComponent("Zurich Hauptbahnhof, Switzerland") + "&output=embed");
   } else {
     const p = document.createElement("p");
     p.className = "empty small";
@@ -177,6 +307,7 @@ function render(home) {
   }
 
   renderFinance(home);
+  renderRealtor(home);
 }
 
 async function init() {

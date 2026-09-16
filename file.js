@@ -1,4 +1,4 @@
-const state = { code: "", name: "", homes: [], dirty: false, settings: { combinedIncome: null } };
+const state = { code: "", name: "", homes: [], dirty: false, settings: { combinedIncome: null }, query: "" };
 
 const STATUS_STYLE = {
   "Awaiting Information": "gray",
@@ -73,6 +73,8 @@ function renderVisits() {
     const cellAddr = document.createElement("td");
     cellAddr.className = "muted";
     cellAddr.textContent = address || "\u2014";
+    const cellRealtor = document.createElement("td");
+    cellRealtor.textContent = r.home.realtorName || "\u2014";
     const d = new Date(visitKey(r.v));
     const cellDate = document.createElement("td");
     cellDate.textContent = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -80,6 +82,7 @@ function renderVisits() {
     cellTime.textContent = r.v.time || "\u2014";
     tr.appendChild(cellProp);
     tr.appendChild(cellAddr);
+    tr.appendChild(cellRealtor);
     tr.appendChild(cellDate);
     tr.appendChild(cellTime);
     tr.addEventListener("click", () => goView(state.homes.indexOf(r.home)));
@@ -91,10 +94,30 @@ function renderTable() {
   const body = document.getElementById("homes-body");
   body.innerHTML = "";
   const empty = document.getElementById("empty-state");
-  empty.textContent = "No homes yet \u2014 add your first one.";
-  empty.hidden = state.homes.length > 0;
+  const query = state.query.trim().toLowerCase();
+  const list = query
+    ? state.homes.filter((h) =>
+        [
+          h.title,
+          h.street,
+          h.zip,
+          h.city,
+          h.canton,
+          h.realtorName,
+          h.realtorPhone,
+          h.realtorEmail,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query)
+      )
+    : state.homes;
+  empty.textContent = query && !list.length ? "No homes match your search." : "No homes yet \u2014 add your first one.";
+  empty.hidden = list.length > 0;
 
-  state.homes.forEach((home, i) => {
+  list.forEach((home) => {
+    const i = state.homes.indexOf(home);
     const tr = document.createElement("tr");
     const address = [home.street, [home.zip, home.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
@@ -168,7 +191,7 @@ function renderTable() {
     tr.appendChild(cellPhone);
     tr.appendChild(cellStatus);
     tr.appendChild(cellActions);
-    tr.addEventListener("click", () => goHome(i));
+    tr.addEventListener("click", () => goView(i));
     body.appendChild(tr);
   });
 
@@ -204,6 +227,11 @@ btnEdit.addEventListener("click", () => {
 
 document.getElementById("btn-back").addEventListener("click", () => go("files.html"));
 document.getElementById("btn-add").addEventListener("click", () => goHome(-1));
+
+document.getElementById("search").addEventListener("input", (e) => {
+  state.query = e.target.value;
+  renderTable();
+});
 
 document.getElementById("btn-save").addEventListener("click", async () => {
   const btn = document.getElementById("btn-save");
