@@ -60,6 +60,25 @@
       </label>
       <label>Size (m&sup2;)<input id="f-size" type="number" min="0" step="1" placeholder="120"></label>
       <label>Rooms<input id="f-rooms" type="number" min="0" step="0.5" placeholder="3.5"></label>
+      <label>House Type
+        <select id="f-house-type">
+          <option value="">&mdash;</option>
+          <option>Apartment</option>
+          <option>Duplex</option>
+          <option>House</option>
+        </select>
+      </label>
+      <label id="house-floor-wrap" hidden><span id="house-floor-label">Floor</span>
+        <select id="f-floor" hidden>
+          <option value="">&mdash;</option>
+          <option>EG</option>
+          <option>1 OG</option>
+          <option>2 OG</option>
+          <option>3 OG</option>
+          <option>4 OG</option>
+          <option>5 OG</option>
+        </select>
+        <input id="f-floors" type="number" min="1" step="1" placeholder="2" hidden></label>
       <label>Built year<input id="f-built" type="number" min="1500" max="2100" placeholder="2019"></label>
       <label>Last renovation year<input id="f-renovated" type="number" min="1500" max="2100" placeholder="2024"></label>
 
@@ -73,16 +92,17 @@
 
       <h2 class="form-section">Listing &amp; Status</h2>
       <label class="c2">Listing URL<input id="f-url" type="url" placeholder="https://www.immoscout24.ch/&hellip;"></label>
+      <label class="c2">Detailed Info URL<input id="f-detail-url" type="url" placeholder="https://&hellip;"></label>
       <label class="c2">Main Image URL<input id="f-main-image" type="url" placeholder="https://static.immoscout.ch/&hellip;"></label>
       <label class="c2">Status
         <select id="f-status">
           <option value="">&mdash;</option>
           <option>Awaiting Information</option>
-          <option>Applied for Visit</option>
           <option>In Contact</option>
+          <option>Applied for Visit</option>
           <option>To Visit</option>
-          <option>Rejected</option>
           <option>Thinking</option>
+          <option>Rejected</option>
         </select>
       </label>
 

@@ -249,6 +249,13 @@ function render(home) {
   details.appendChild(detailRow("Price", fmtPrice(home.price)));
   details.appendChild(detailRow("Size", fmtSize(home.size)));
   details.appendChild(detailRow("Rooms", fmtRooms(home.rooms)));
+  if (home.houseType) {
+    let typeInfo = home.houseType;
+    if (home.floor != null && home.floor !== "") {
+      typeInfo += home.houseType === "House" ? " (" + home.floor + " floors)" : " (" + home.floor + ")";
+    }
+    details.appendChild(detailRow("House type", typeInfo));
+  }
   if (home.built) details.appendChild(detailRow("Built", String(home.built)));
   if (home.renovated) details.appendChild(detailRow("Last renovation", String(home.renovated)));
 
@@ -272,6 +279,15 @@ function render(home) {
     link.rel = "noopener";
     link.textContent = "Open listing";
     details.appendChild(detailRow("Listing", link));
+  }
+
+  if (home.detailUrl && /^https?:\/\//i.test(home.detailUrl)) {
+    const link = document.createElement("a");
+    link.href = home.detailUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "Open detailed info";
+    details.appendChild(detailRow("Detailed info", link));
   }
 
   const notesWrap = document.getElementById("v-notes-wrap");

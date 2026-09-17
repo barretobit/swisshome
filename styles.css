@@ -142,6 +142,10 @@ textarea { resize: vertical; }
 table { width: 100%; border-collapse: collapse; min-width: 640px; }
 th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 0.9rem; white-space: nowrap; }
 th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; background: #fafbfc; }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[data-sort]:hover { background: #eef0f2; }
+.sort-arrow { margin-left: 6px; font-size: 0.7rem; color: #9aa0a6; display: inline-block; }
+.sort-arrow.active { color: var(--accent); }
 tbody tr { cursor: pointer; }
 tbody tr:hover { background: #f7f8fa; }
 td.muted { color: var(--muted); }

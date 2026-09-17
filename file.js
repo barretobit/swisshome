@@ -1,4 +1,4 @@
-const state = { code: "", name: "", homes: [], dirty: false, settings: { combinedIncome: null }, query: "" };
+const state = { code: "", name: "", homes: [], dirty: false, settings: { combinedIncome: null }, query: "", sort: { key: null, dir: 1 } };
 
 const STATUS_STYLE = {
   "Awaiting Information": "gray",
@@ -8,6 +8,8 @@ const STATUS_STYLE = {
   Rejected: "red",
   Thinking: "amber",
 };
+
+const STATUS_ORDER = ["Awaiting Information", "In Contact", "Applied for Visit", "To Visit", "Thinking", "Rejected"];
 
 function saveDraft() {
   setDraft(state.code, { name: state.name, homes: state.homes, settings: state.settings });
@@ -53,6 +55,101 @@ function visitKey(v) {
   return v.date + "T" + (v.time || "00:00");
 }
 
+function nextVisit(home) {
+  const now = nowKey();
+  const vs = (Array.isArray(home.visits) ? home.visits : []).filter((v) => v && v.date && visitKey(v) >= now);
+  vs.sort((a, b) => (visitKey(a) < visitKey(b) ? -1 : 1));
+  return vs[0] || null;
+}
+
+function fmtVisitCell(v) {
+  const d = new Date(visitKey(v));
+  const date = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  return date + (v.time ? ", " + v.time : "");
+}
+
+function sortKey(home, key) {
+  switch (key) {
+    case "image":
+      return home.mainImage ? "0" : "1";
+    case "title":
+      return (home.title || "").toLowerCase();
+    case "realtor":
+      return (home.realtorName || "").toLowerCase();
+    case "phone":
+      return (home.realtorPhone || "").toLowerCase();
+    case "address":
+      return [home.street, home.zip, home.city, home.canton].filter(Boolean).join(", ").toLowerCase();
+    case "price":
+      return home.price == null ? null : home.price;
+    case "status": {
+      const idx = home.status ? STATUS_ORDER.indexOf(home.status) : -1;
+      return idx === -1 ? null : idx;
+    }
+    case "nextvisit": {
+      const nv = nextVisit(home);
+      return nv ? visitKey(nv) : null;
+    }
+  }
+}
+
+function compareSort(a, b) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === "number" || typeof b === "number") {
+    const na = Number(a);
+    const nb = Number(b);
+    if (Number.isNaN(na) && Number.isNaN(nb)) return 0;
+    if (Number.isNaN(na)) return 1;
+    if (Number.isNaN(nb)) return -1;
+    return na - nb;
+  }
+  return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
+}
+
+function sortList(list) {
+  const { key, dir } = state.sort;
+  if (!key) return list;
+  const sorted = list.slice();
+  sorted.sort((x, y) => {
+    let c = compareSort(sortKey(x, key), sortKey(y, key));
+    if (c === 0) c = compareSort((x.title || "").toLowerCase(), (y.title || "").toLowerCase());
+    return c * dir;
+  });
+  return sorted;
+}
+
+function updateSortHeaders() {
+  document.querySelectorAll("#homes-table th[data-sort]").forEach((th) => {
+    const arrow = th.querySelector(".sort-arrow");
+    if (!arrow) return;
+    const key = th.getAttribute("data-sort");
+    if (state.sort.key === key) {
+      arrow.textContent = state.sort.dir === 1 ? "\u25B2" : "\u25BC";
+      arrow.classList.add("active");
+    } else {
+      arrow.textContent = "\u21C5";
+      arrow.classList.remove("active");
+    }
+  });
+}
+
+function wireSort() {
+  document.querySelectorAll("#homes-table th[data-sort]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.getAttribute("data-sort");
+      if (state.sort.key === key) {
+        if (state.sort.dir === 1) state.sort.dir = -1;
+        else state.sort = { key: null, dir: 1 };
+      } else {
+        state.sort = { key, dir: 1 };
+      }
+      renderTable();
+    });
+  });
+}
+
 function renderVisits() {
   const body = document.getElementById("visits-body");
   body.innerHTML = "";
@@ -95,7 +192,7 @@ function renderTable() {
   body.innerHTML = "";
   const empty = document.getElementById("empty-state");
   const query = state.query.trim().toLowerCase();
-  const list = query
+  let list = query
     ? state.homes.filter((h) =>
         [
           h.title,
@@ -113,6 +210,7 @@ function renderTable() {
           .includes(query)
       )
     : state.homes;
+  list = sortList(list);
   empty.textContent = query && !list.length ? "No homes match your search." : "No homes yet \u2014 add your first one.";
   empty.hidden = list.length > 0;
 
@@ -142,9 +240,10 @@ function renderTable() {
     const cellPrice = document.createElement("td");
     cellPrice.className = "num";
     cellPrice.textContent = fmtPrice(home.price);
-    const cellRooms = document.createElement("td");
-    cellRooms.className = "num";
-    cellRooms.textContent = fmtRooms(home.rooms);
+    const cellVisit = document.createElement("td");
+    cellVisit.className = "muted";
+    const nv = nextVisit(home);
+    cellVisit.textContent = nv ? fmtVisitCell(nv) : "\u2014";
     const cellRealtor = document.createElement("td");
     cellRealtor.textContent = home.realtorName || "\u2014";
     const cellPhone = document.createElement("td");
@@ -159,17 +258,9 @@ function renderTable() {
     cellStatus.appendChild(badge);
     const cellActions = document.createElement("td");
     cellActions.className = "right";
-    const btnView = button("View", ["btn", "ghost", "sm"]);
-    btnView.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      goView(i);
-    });
-    const btnEdit = button("Edit", ["btn", "ghost", "sm"]);
-    btnEdit.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      goHome(i);
-    });
-    const btnDel = button("Delete", ["btn", "ghost", "sm", "danger"]);
+    const btnDel = button("\uD83D\uDDD1", ["btn", "ghost", "sm", "danger"]);
+    btnDel.title = "Delete home";
+    btnDel.setAttribute("aria-label", "Delete home");
     btnDel.addEventListener("click", (ev) => {
       ev.stopPropagation();
       if (!confirm("Delete this home?")) return;
@@ -178,8 +269,6 @@ function renderTable() {
       markDirty();
       renderTable();
     });
-    cellActions.appendChild(btnView);
-    cellActions.appendChild(btnEdit);
     cellActions.appendChild(btnDel);
 
     tr.appendChild(cellImg);
@@ -188,13 +277,14 @@ function renderTable() {
     tr.appendChild(cellPhone);
     tr.appendChild(cellAddress);
     tr.appendChild(cellPrice);
-    tr.appendChild(cellRooms);
     tr.appendChild(cellStatus);
+    tr.appendChild(cellVisit);
     tr.appendChild(cellActions);
     tr.addEventListener("click", () => goView(i));
     body.appendChild(tr);
   });
 
+  updateSortHeaders();
   updateSaveState();
   renderVisits();
 }
@@ -327,6 +417,7 @@ async function init() {
   state.dirty = dirty;
 
   wireMeta();
+  wireSort();
   document.getElementById("f-code").value = state.code;
   document.getElementById("f-name").value = state.name;
   document.getElementById("f-income").value = state.settings.combinedIncome ?? "";

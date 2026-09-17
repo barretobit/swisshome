@@ -18,7 +18,19 @@ function fillForm(home) {
   document.getElementById("f-rooms").value = home.rooms ?? "";
   document.getElementById("f-built").value = home.built ?? "";
   document.getElementById("f-renovated").value = home.renovated ?? "";
+  document.getElementById("f-house-type").value = home.houseType || "";
+  document.getElementById("f-floor").value = "";
+  document.getElementById("f-floors").value = "";
+  if (home.houseType === "House") {
+    document.getElementById("f-floors").value = home.floor ?? "";
+  } else if (home.houseType === "Apartment" || home.houseType === "Duplex") {
+    let floorVal = home.floor;
+    if (typeof floorVal === "number") floorVal = floorVal === 0 ? "EG" : String(floorVal) + " OG";
+    document.getElementById("f-floor").value = floorVal ?? "";
+  }
+  updateHouseTypeUI();
   document.getElementById("f-url").value = home.url || "";
+  document.getElementById("f-detail-url").value = home.detailUrl || "";
   document.getElementById("f-main-image").value = home.mainImage || "";
   document.getElementById("f-status").value = home.status || "";
   document.getElementById("f-notes").value = home.notes || "";
@@ -114,6 +126,35 @@ function updateGarageUI() {
   }
 }
 
+function updateHouseTypeUI() {
+  const type = document.getElementById("f-house-type").value;
+  const wrap = document.getElementById("house-floor-wrap");
+  const floorSel = document.getElementById("f-floor");
+  const floorsInp = document.getElementById("f-floors");
+  if (type === "Apartment" || type === "Duplex") {
+    document.getElementById("house-floor-label").textContent = "Floor";
+    floorSel.hidden = false;
+    floorsInp.hidden = true;
+    wrap.hidden = false;
+  } else if (type === "House") {
+    document.getElementById("house-floor-label").textContent = "Floors";
+    floorSel.hidden = true;
+    floorsInp.hidden = false;
+    wrap.hidden = false;
+  } else {
+    wrap.hidden = true;
+  }
+}
+
+document.getElementById("f-house-type").addEventListener("change", updateHouseTypeUI);
+
+document.getElementById("home-form").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const tag = e.target && e.target.tagName;
+  if (tag === "TEXTAREA" || tag === "BUTTON") return;
+  e.preventDefault();
+});
+
 document.getElementById("f-garage").addEventListener("change", updateGarageUI);
 document.getElementById("f-garage-included").addEventListener("change", updateGarageUI);
 
@@ -137,6 +178,12 @@ document.getElementById("home-form").addEventListener("submit", (e) => {
   d = d || { name: "", homes: [] };
   const homes = Array.isArray(d.homes) ? d.homes : [];
   const phoneRaw = document.getElementById("f-realtor-phone").value.replace(/\s+/g, "").replace(/^\+41/, "");
+  const ht = document.getElementById("f-house-type").value;
+  const floorRaw = ht === "House" ? document.getElementById("f-floors").value : document.getElementById("f-floor").value;
+  if ((ht === "Apartment" || ht === "Duplex") && !floorRaw) {
+    toast("Please select the floor.", false);
+    return;
+  }
   const home = {
     id: state.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     title: document.getElementById("f-title").value.trim(),
@@ -149,7 +196,10 @@ document.getElementById("home-form").addEventListener("submit", (e) => {
     rooms: parseNum(document.getElementById("f-rooms").value),
     built: parseNum(document.getElementById("f-built").value),
     renovated: parseNum(document.getElementById("f-renovated").value),
+    houseType: ht,
+    floor: ht === "House" ? parseNum(floorRaw) : floorRaw,
     url: document.getElementById("f-url").value.trim(),
+    detailUrl: document.getElementById("f-detail-url").value.trim(),
     mainImage: document.getElementById("f-main-image").value.trim(),
     status: document.getElementById("f-status").value,
     notes: document.getElementById("f-notes").value.trim(),
@@ -166,7 +216,7 @@ document.getElementById("home-form").addEventListener("submit", (e) => {
   else homes.push(home);
   d.homes = homes;
   setDraft(state.code, d);
-  location.replace("file.html?code=" + encodeURIComponent(state.code));
+  location.replace("home-view.html?code=" + encodeURIComponent(state.code) + "&id=" + encodeURIComponent(home.id));
 });
 
 document.getElementById("btn-home-cancel").addEventListener("click", () => {
