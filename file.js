@@ -1,4 +1,7 @@
-const state = { code: "", name: "", homes: [], dirty: false, settings: { combinedIncome: null }, query: "", sort: { key: null, dir: 1 } };
+const state = { code: "", name: "", homes: [], settings: { combinedIncome: null }, query: "", sort: { key: null, dir: 1 } };
+
+let saveTimer = null;
+let saving = false;
 
 const STATUS_STYLE = {
   "Awaiting Information": "gray",
@@ -19,29 +22,52 @@ function setTitle() {
   document.getElementById("file-title").textContent = state.name || state.code;
 }
 
-function markDirty() {
-  state.dirty = true;
-  updateSaveState();
-}
 function updateSaveState() {
   const el = document.getElementById("save-state");
-  el.textContent = state.dirty ? "Unsaved changes" : "All changes saved";
-  el.classList.toggle("dirty", state.dirty);
+  if (!el) return;
+  el.textContent = saving ? "Saving\u2026" : "All changes saved";
+  el.classList.toggle("dirty", saving);
 }
 
-function go(url) {
-  if (state.dirty && !confirm("You have unsaved changes. Leave anyway?")) return;
+function payload() {
+  return { name: state.name, homes: state.homes, settings: state.settings };
+}
+
+async function flushSave() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  saveDraft();
+  saving = true;
+  updateSaveState();
+  try {
+    await saveFile(session.user, session.password, state.code, payload());
+  } catch (err) {
+    toast(err.message, false);
+  } finally {
+    saving = false;
+    updateSaveState();
+  }
+}
+
+function persist() {
+  saveDraft();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 500);
+}
+
+async function go(url) {
+  await flushSave();
   location.href = url;
 }
 
-function goHome(i) {
-  saveDraft();
+async function goHome(i) {
+  await flushSave();
   const id = i >= 0 ? "&id=" + encodeURIComponent(state.homes[i].id) : "";
   location.href = "home.html?code=" + encodeURIComponent(state.code) + id;
 }
 
-function goView(i) {
-  saveDraft();
+async function goView(i) {
+  await flushSave();
   location.href = "home-view.html?code=" + encodeURIComponent(state.code) + "&id=" + encodeURIComponent(state.homes[i].id);
 }
 
@@ -265,9 +291,8 @@ function renderTable() {
       ev.stopPropagation();
       if (!confirm("Delete this home?")) return;
       state.homes.splice(i, 1);
-      saveDraft();
-      markDirty();
       renderTable();
+      persist();
     });
     cellActions.appendChild(btnDel);
 
@@ -295,14 +320,37 @@ function wireMeta() {
   nameEl.addEventListener("input", () => {
     state.name = nameEl.value.trim();
     setTitle();
-    markDirty();
+    persist();
   });
-  codeEl.addEventListener("input", () => {
-    if (codeEl.value.trim() !== state.code) markDirty();
+  codeEl.addEventListener("change", async () => {
+    const newCode = codeEl.value.trim();
+    if (!newCode) {
+      codeEl.value = state.code;
+      return;
+    }
+    if (newCode === state.code) return;
+    await flushSave();
+    const data = payload();
+    try {
+      await createFile(session.user, session.password, newCode, data);
+      await deleteFile(session.user, session.password, state.code);
+      clearDraft(state.code);
+      const names = getNames();
+      delete names[state.code];
+      if (state.name) names[newCode] = state.name;
+      else delete names[newCode];
+      setNames(names);
+      state.code = newCode;
+      setDraft(newCode, data);
+      history.replaceState(null, "", "file.html?code=" + encodeURIComponent(newCode));
+    } catch (err) {
+      toast(err.message, false);
+      codeEl.value = state.code;
+    }
   });
   document.getElementById("f-income").addEventListener("input", (e) => {
     state.settings.combinedIncome = parseNum(e.target.value);
-    markDirty();
+    persist();
   });
 }
 
@@ -323,55 +371,6 @@ document.getElementById("search").addEventListener("input", (e) => {
   renderTable();
 });
 
-document.getElementById("btn-save").addEventListener("click", async () => {
-  const btn = document.getElementById("btn-save");
-  const newCode = document.getElementById("f-code").value.trim();
-  const newName = document.getElementById("f-name").value.trim();
-  if (!newCode) {
-    toast("Code cannot be empty.", false);
-    return;
-  }
-  const renamed = newCode !== state.code;
-  const data = { name: newName, homes: state.homes, settings: state.settings };
-
-  btn.disabled = true;
-  btn.textContent = "Saving\u2026";
-  try {
-    if (renamed) {
-      await createFile(session.user, session.password, newCode, data);
-      await api("/storage/" + encodeURIComponent(state.code), {
-        method: "DELETE",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ user: session.user, password: session.password }),
-      });
-      clearDraft(state.code);
-    } else {
-      await saveFile(session.user, session.password, state.code, data);
-      clearDraft(state.code);
-    }
-
-    const names = getNames();
-    if (renamed) delete names[state.code];
-    if (newName) names[newCode] = newName;
-    else delete names[newCode];
-    setNames(names);
-
-    state.code = newCode;
-    state.name = newName;
-    state.dirty = false;
-    updateSaveState();
-    metaCard.hidden = true;
-    btnEdit.textContent = "Edit";
-    if (renamed) history.replaceState(null, "", "file.html?code=" + encodeURIComponent(state.code));
-    toast("Saved to server.");
-  } catch (err) {
-    toast(err.message, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Save";
-  }
-});
-
 async function init() {
   const creds = requireAuth();
   if (!creds) return;
@@ -388,13 +387,11 @@ async function init() {
 
   const draft = getDraft(code);
   let homes;
-  let dirty = false;
   if (draft) {
     const arr = Array.isArray(draft);
     homes = arr ? draft : draft.homes || [];
     state.name = arr ? "" : draft.name || "";
     state.settings = arr || !draft.settings ? { combinedIncome: null } : draft.settings;
-    dirty = true;
   } else {
     try {
       const res = await getFile(creds.user, creds.password, code);
@@ -414,7 +411,6 @@ async function init() {
     }
   }
   state.homes = homes;
-  state.dirty = dirty;
 
   wireMeta();
   wireSort();

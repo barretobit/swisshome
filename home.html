@@ -92,8 +92,16 @@
 
       <h2 class="form-section">Listing &amp; Status</h2>
       <label class="c2">Listing URL<input id="f-url" type="url" placeholder="https://www.immoscout24.ch/&hellip;"></label>
-      <label class="c2">Detailed Info URL<input id="f-detail-url" type="url" placeholder="https://&hellip;"></label>
       <label class="c2">Main Image URL<input id="f-main-image" type="url" placeholder="https://static.immoscout.ch/&hellip;"></label>
+      <div class="c2 links-editor">
+        <span class="links-label">Docs Links</span>
+        <div id="docs-links-list" class="links-list"><p class="empty small">No links yet.</p></div>
+        <div class="links-add">
+          <label>Title<input id="dl-title" type="text" placeholder="Floor plan"></label>
+          <label>URL<input id="dl-url" type="url" placeholder="https://&hellip;"></label>
+          <button id="btn-add-docs-link" type="button" class="btn ghost">Add link</button>
+        </div>
+      </div>
       <label class="c2">Status
         <select id="f-status">
           <option value="">&mdash;</option>

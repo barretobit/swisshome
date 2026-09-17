@@ -1,4 +1,4 @@
-const state = { code: "", id: null, settings: {} };
+const state = { code: "", id: null, name: "", settings: {}, homes: [], home: null };
 
 const STATUS_STYLE = {
   "Awaiting Information": "gray",
@@ -24,13 +24,17 @@ function detailRow(label, value) {
   return row;
 }
 
-function urlLink(url, text) {
+function urlLink(url) {
   if (url && /^https?:\/\//i.test(url)) {
     const link = document.createElement("a");
+    link.className = "btn ghost sm icon-btn";
     link.href = url;
     link.target = "_blank";
     link.rel = "noopener";
-    link.textContent = text;
+    link.title = "Open listing";
+    link.setAttribute("aria-label", "Open listing");
+    link.innerHTML =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
     return link;
   }
   return "\u2014";
@@ -234,6 +238,12 @@ function renderNotesDocs(home) {
   }
 
   const notes = notesBlock("Notes");
+  const editNotes = document.createElement("button");
+  editNotes.type = "button";
+  editNotes.className = "nd-edit";
+  editNotes.textContent = "Edit";
+  editNotes.addEventListener("click", () => openNotesModal(home.notes || ""));
+  notes.querySelector(".nd-title").appendChild(editNotes);
   if (home.notes) {
     const p = document.createElement("p");
     p.className = "prewrap nd-text";
@@ -247,11 +257,28 @@ function renderNotesDocs(home) {
   }
   el.appendChild(notes);
 
-  const docs = notesBlock("Docs");
-  const docsEmpty = document.createElement("p");
-  docsEmpty.className = "nd-empty";
-  docsEmpty.textContent = "No documents yet.";
-  docs.appendChild(docsEmpty);
+  const links = Array.isArray(home.docsLinks) ? home.docsLinks : [];
+  const docs = notesBlock("Docs Links");
+  if (links.length) {
+    const list = document.createElement("div");
+    list.className = "nd-links";
+    links.forEach((l) => {
+      const a = document.createElement("a");
+      if (l.url && /^https?:\/\//i.test(l.url)) {
+        a.href = l.url;
+        a.target = "_blank";
+        a.rel = "noopener";
+      }
+      a.textContent = l.title || l.url || "Link";
+      list.appendChild(a);
+    });
+    docs.appendChild(list);
+  } else {
+    const p = document.createElement("p");
+    p.className = "nd-empty";
+    p.textContent = "No links yet.";
+    docs.appendChild(p);
+  }
   el.appendChild(docs);
 }
 
@@ -298,6 +325,7 @@ function renderRealtor(home) {
 }
 
 function render(home) {
+  state.home = home;
   document.getElementById("v-title").textContent = home.title || "Untitled";
 
   const details = document.getElementById("v-details");
@@ -344,8 +372,7 @@ function render(home) {
   if (status) badge.classList.add(STATUS_STYLE[status] || "gray");
   details.appendChild(detailRow("Status", badge));
 
-  details.appendChild(detailRow("Listing URL", urlLink(home.url, "Open listing")));
-  details.appendChild(detailRow("Detailed Info URL", urlLink(home.detailUrl, "Open detailed info")));
+  details.appendChild(detailRow("Listing URL", urlLink(home.url)));
 
   const parts = [];
   if (home.street) parts.push(home.street);
@@ -390,10 +417,12 @@ async function init() {
   let homes = d ? (Array.isArray(d) ? d : d.homes || []) : null;
   if (!homes) {
     let saved = [];
+    let name = "";
     try {
       const res = await getFile(creds.user, creds.password, code);
       const data = res && res.json && typeof res.json === "object" ? res.json : {};
       saved = Array.isArray(data.homes) ? data.homes : [];
+      name = typeof data.name === "string" ? data.name : "";
       state.settings = data.settings || {};
     } catch (err) {
       if (err.message === "Invalid credentials.") {
@@ -403,10 +432,13 @@ async function init() {
       toast(err.message, false);
     }
     homes = saved;
-    setDraft(code, { name: "", homes, settings: state.settings });
+    state.name = name;
+    setDraft(code, { name, homes, settings: state.settings });
   } else {
+    state.name = (d && !Array.isArray(d) && d.name) || "";
     state.settings = (d && !Array.isArray(d) && d.settings) || {};
   }
+  state.homes = homes;
   const home = homes.find((h) => h.id === state.id);
   if (!home) {
     location.replace("file.html?code=" + encodeURIComponent(code));
@@ -438,9 +470,51 @@ function closeLightbox() {
   document.getElementById("lightbox-img").src = "";
 }
 
+function openNotesModal(text) {
+  const modal = document.getElementById("notes-modal");
+  const input = document.getElementById("notes-modal-text");
+  input.value = text;
+  modal.hidden = false;
+  input.focus();
+}
+
+function closeNotesModal() {
+  const modal = document.getElementById("notes-modal");
+  if (modal) modal.hidden = true;
+}
+
+async function saveNotes() {
+  const home = state.home;
+  if (!home) return;
+  home.notes = document.getElementById("notes-modal-text").value.trim();
+  const data = { name: state.name, homes: state.homes, settings: state.settings };
+  setDraft(state.code, data);
+  closeNotesModal();
+  renderNotesDocs(home);
+  try {
+    await saveFile(session.user, session.password, state.code, data);
+  } catch (err) {
+    toast(err.message, false);
+  }
+}
+
 document.getElementById("lightbox").addEventListener("click", closeLightbox);
+document.getElementById("notes-modal-cancel").addEventListener("click", closeNotesModal);
+document.getElementById("notes-modal-save").addEventListener("click", saveNotes);
+document.getElementById("notes-modal").addEventListener("click", (e) => {
+  if (e.target.id === "notes-modal") closeNotesModal();
+});
+document.getElementById("notes-modal-text").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    saveNotes();
+  }
+});
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeLightbox();
+  if (e.key === "Escape") {
+    closeLightbox();
+    closeNotesModal();
+  }
 });
 
 init();

@@ -30,7 +30,7 @@
         <div id="v-details"></div>
       </section>
       <section class="card">
-        <h2>Notes &amp; Docs</h2>
+        <h2>Views &amp; Notes &amp; Docs</h2>
         <div id="v-notes-docs" class="notes-docs"></div>
       </section>
       <section class="card full" id="v-realtor-card" hidden>
@@ -54,6 +54,17 @@
 
   <div id="lightbox" class="lightbox" hidden>
     <img id="lightbox-img" alt="">
+  </div>
+
+  <div id="notes-modal" class="modal modal-wide" hidden>
+    <div class="modal-box card">
+      <h2>Notes</h2>
+      <label class="c2">Notes<textarea id="notes-modal-text" rows="10" placeholder="Type your notes&hellip;"></textarea></label>
+      <div class="modal-actions">
+        <button id="notes-modal-cancel" type="button" class="btn ghost">Cancel</button>
+        <button id="notes-modal-save" type="button" class="btn primary">Save</button>
+      </div>
+    </div>
   </div>
 
   <script src="common.js"></script>
