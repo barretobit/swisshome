@@ -1,14 +1,26 @@
+async function listAndRedirect() {
+  try {
+    const res = await listFiles(session.user, session.password);
+    const codes = res.codes || [];
+    if (codes.length === 1) {
+      location.replace("file.html?code=" + encodeURIComponent(codes[0].code));
+      return;
+    }
+  } catch {}
+  location.replace("files.html");
+}
+
 async function tryLogin(user, password) {
   await login(user, password);
   session.set(user, password);
-  location.replace("files.html");
+  await listAndRedirect();
 }
 
 async function init() {
   if (session.user && session.password) {
     try {
       await login(session.user, session.password);
-      location.replace("files.html");
+      await listAndRedirect();
       return;
     } catch {}
   }

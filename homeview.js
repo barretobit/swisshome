@@ -24,6 +24,18 @@ function detailRow(label, value) {
   return row;
 }
 
+function urlLink(url, text) {
+  if (url && /^https?:\/\//i.test(url)) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = text;
+    return link;
+  }
+  return "\u2014";
+}
+
 function lazyMapFrame(container, src) {
   const frame = document.createElement("iframe");
   frame.className = "map-frame";
@@ -57,96 +69,38 @@ function affordabilityPct(total, income, equityPct) {
   return ((interest + amort + ancillary) / income) * 100;
 }
 
-function financeRow(label, value) {
+function financeLine(parent, label) {
   const row = document.createElement("div");
-  row.className = "finance-row";
+  row.className = "detail";
   const l = document.createElement("span");
+  l.className = "detail-label";
   l.textContent = label;
-  const v = document.createElement("span");
-  v.textContent = value;
+  const v = document.createElement("div");
+  v.className = "detail-value";
   row.appendChild(l);
   row.appendChild(v);
-  return row;
+  parent.appendChild(row);
+  return v;
 }
 
-function downCell(label, amount, total, income, equityPct) {
-  const cell = document.createElement("div");
-  cell.className = "finance-cell";
+function financeControl(labelText, valueText) {
+  const control = document.createElement("div");
+  control.className = "finance-control";
   const head = document.createElement("div");
-  head.className = "finance-head";
-  head.textContent = label;
-  cell.appendChild(head);
-  cell.appendChild(financeRow("Total", fmtPrice(amount)));
-  cell.appendChild(financeRow("Single", fmtPrice(amount / 2)));
-  if (income && income > 0) {
-    const pct = affordabilityPct(total, income, equityPct);
-    const row = document.createElement("div");
-    row.className = "finance-afford " + (pct <= 33 ? "ok" : "bad");
-    const rl = document.createElement("span");
-    rl.textContent = "Affordability";
-    const rv = document.createElement("span");
-    rv.className = "finance-value";
-    rv.textContent = (pct <= 33 ? "Yes" : "No") + " (" + pct.toLocaleString("en-CH", { maximumFractionDigits: 1 }) + "%)";
-    row.appendChild(rl);
-    row.appendChild(rv);
-    cell.appendChild(row);
-  }
-  return cell;
-}
-
-function mortgageCell(label, total, equityPct) {
-  const cell = document.createElement("div");
-  cell.className = "finance-cell";
-  const head = document.createElement("div");
-  head.className = "finance-head";
-  head.textContent = label;
-  cell.appendChild(head);
-
-  const mortgage = total * (1 - equityPct);
-  const second = Math.max(0, mortgage - total * 0.67);
-
-  const all = document.createElement("div");
-  const rateWrap = document.createElement("div");
-  rateWrap.className = "finance-row";
-  const rateLabel = document.createElement("span");
-  rateLabel.textContent = "Interest rate";
-  const rateValue = document.createElement("span");
-  rateValue.className = "finance-value";
-  rateWrap.appendChild(rateLabel);
-  rateWrap.appendChild(rateValue);
-  all.appendChild(rateWrap);
-
+  head.className = "finance-control-head";
+  const label = document.createElement("span");
+  label.textContent = labelText;
+  const value = document.createElement("span");
+  value.className = "finance-value";
+  value.textContent = valueText;
+  head.appendChild(label);
+  head.appendChild(value);
+  control.appendChild(head);
   const slider = document.createElement("input");
   slider.type = "range";
   slider.className = "rate-slider";
-  slider.min = "0.6";
-  slider.max = "2.0";
-  slider.step = "0.1";
-  slider.value = "0.7";
-  all.appendChild(slider);
-
-  const payRow = document.createElement("div");
-  payRow.className = "finance-row";
-  const payLabel = document.createElement("span");
-  payLabel.textContent = "Monthly payment";
-  const payValue = document.createElement("span");
-  payValue.className = "finance-value";
-  payRow.appendChild(payLabel);
-  payRow.appendChild(payValue);
-  all.appendChild(payRow);
-
-  function update() {
-    const rate = parseFloat(slider.value);
-    rateValue.textContent = String(rate) + "%";
-    const interest = (mortgage * rate) / 100;
-    const amort = second / 15;
-    payValue.textContent = fmtPrice((interest + amort) / 12) + " / month";
-  }
-  slider.addEventListener("input", update);
-  update();
-
-  cell.appendChild(all);
-  return cell;
+  control.appendChild(slider);
+  return { control, slider, value };
 }
 
 function renderFinance(home) {
@@ -157,23 +111,72 @@ function renderFinance(home) {
   if (home.garage && !home.garageIncluded && home.garagePrice != null) extra = home.garagePrice;
   const total = price + extra;
 
-  el.appendChild(detailRow("Purchase price", fmtPrice(price)));
+  el.appendChild(detailRow("Purchase Price", fmtPrice(price)));
   if (extra > 0) el.appendChild(detailRow("Garage (extra)", fmtPrice(extra)));
-  el.appendChild(detailRow("Total value", fmtPrice(total)));
-  el.appendChild(detailRow("Closing costs (0.25%)", fmtPrice(total * 0.0025)));
+  el.appendChild(detailRow("Total Value", fmtPrice(total)));
+  el.appendChild(detailRow("Closing Costs (0.25%)", fmtPrice(total * 0.0025)));
 
   const income = state.settings && state.settings.combinedIncome;
-  const grid = document.createElement("div");
-  grid.className = "finance-grid";
-  grid.appendChild(downCell("20% Down Payment", total * 0.2, total, income, 0.2));
-  grid.appendChild(downCell("25% Down Payment", total * 0.25, total, income, 0.25));
-  el.appendChild(grid);
 
-  const mGrid = document.createElement("div");
-  mGrid.className = "finance-grid mortgage-grid";
-  mGrid.appendChild(mortgageCell("20% Mortgage", total, 0.2));
-  mGrid.appendChild(mortgageCell("25% Mortgage", total, 0.25));
-  el.appendChild(mGrid);
+  const down = financeControl("Down Payment", "25%");
+  down.slider.min = "20";
+  down.slider.max = "30";
+  down.slider.step = "1";
+  down.slider.value = "25";
+
+  const rate = financeControl("Interest Rate", "0.7%");
+  rate.slider.min = "0.6";
+  rate.slider.max = "2.0";
+  rate.slider.step = "0.1";
+  rate.slider.value = "0.7";
+
+  const controls = document.createElement("div");
+  controls.className = "finance-sliders";
+  controls.appendChild(down.control);
+  controls.appendChild(rate.control);
+  el.appendChild(controls);
+
+  const downTotal = financeLine(el, "Down Payment");
+  const downSingle = financeLine(el, "Down Payment (Single)");
+  const mortgageTotal = financeLine(el, "Mortgage");
+  const payInterest = financeLine(el, "Interest / Month");
+  const payAmort = financeLine(el, "Amortization / Month");
+  const payTotal = financeLine(el, "Monthly Payment");
+  payTotal.classList.add("strong");
+  const affordValue = financeLine(el, "Affordability");
+
+  function update() {
+    const equityPct = parseFloat(down.slider.value) / 100;
+    const ratePct = parseFloat(rate.slider.value);
+
+    down.value.textContent = Math.round(equityPct * 100) + "%";
+    rate.value.textContent = ratePct.toFixed(1) + "%";
+
+    const downAmount = total * equityPct;
+    const mortgage = total - downAmount;
+    const second = Math.max(0, mortgage - total * 0.67);
+    const interestMonthly = (mortgage * ratePct) / 100 / 12;
+    const amortMonthly = second / 15 / 12;
+
+    downTotal.textContent = fmtPrice(downAmount);
+    downSingle.textContent = fmtPrice(downAmount / 2);
+    mortgageTotal.textContent = fmtPrice(mortgage);
+    payInterest.textContent = fmtPrice(interestMonthly);
+    payAmort.textContent = fmtPrice(amortMonthly);
+    payTotal.textContent = fmtPrice(interestMonthly + amortMonthly) + " / month";
+
+    if (income && income > 0) {
+      const pct = affordabilityPct(total, income, equityPct);
+      affordValue.className = "detail-value " + (pct <= 33 ? "ok" : "bad");
+      affordValue.textContent = (pct <= 33 ? "Yes" : "No") + " (" + pct.toLocaleString("en-CH", { maximumFractionDigits: 1 }) + "%)";
+    } else {
+      affordValue.className = "detail-value";
+      affordValue.textContent = "\u2014";
+    }
+  }
+  down.slider.addEventListener("input", update);
+  rate.slider.addEventListener("input", update);
+  update();
 
   if (!(income && income > 0)) {
     const p = document.createElement("p");
@@ -181,6 +184,75 @@ function renderFinance(home) {
     p.textContent = "Set your Combined Gross Income in the file settings to see affordability.";
     el.appendChild(p);
   }
+}
+
+function visitKey(v) {
+  return v.date + "T" + (v.time || "00:00");
+}
+
+function nowKey() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+function nextVisit(home) {
+  const now = nowKey();
+  const vs = (Array.isArray(home.visits) ? home.visits : []).filter((v) => v && v.date && visitKey(v) >= now);
+  vs.sort((a, b) => (visitKey(a) < visitKey(b) ? -1 : 1));
+  return vs[0] || null;
+}
+
+function fmtVisit(v) {
+  const d = new Date(visitKey(v));
+  const date = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  return date + (v.time ? ", " + v.time : "");
+}
+
+function notesBlock(title) {
+  const block = document.createElement("div");
+  block.className = "nd-block";
+  const h = document.createElement("h3");
+  h.className = "nd-title";
+  h.textContent = title;
+  block.appendChild(h);
+  return block;
+}
+
+function renderNotesDocs(home) {
+  const el = document.getElementById("v-notes-docs");
+  el.innerHTML = "";
+
+  const visit = nextVisit(home);
+  if (visit) {
+    const visitBlockEl = notesBlock("Next Scheduled View");
+    const v = document.createElement("div");
+    v.className = "nd-visit";
+    v.textContent = fmtVisit(visit);
+    visitBlockEl.appendChild(v);
+    el.appendChild(visitBlockEl);
+  }
+
+  const notes = notesBlock("Notes");
+  if (home.notes) {
+    const p = document.createElement("p");
+    p.className = "prewrap nd-text";
+    p.textContent = home.notes;
+    notes.appendChild(p);
+  } else {
+    const p = document.createElement("p");
+    p.className = "nd-empty";
+    p.textContent = "No notes yet.";
+    notes.appendChild(p);
+  }
+  el.appendChild(notes);
+
+  const docs = notesBlock("Docs");
+  const docsEmpty = document.createElement("p");
+  docsEmpty.className = "nd-empty";
+  docsEmpty.textContent = "No documents yet.";
+  docs.appendChild(docsEmpty);
+  el.appendChild(docs);
 }
 
 function realtorCell(label, value) {
@@ -240,24 +312,24 @@ function render(home) {
     img.onerror = () => {
       img.style.display = "none";
     };
+    img.addEventListener("click", () => openLightbox(home.mainImage, img.alt));
     details.appendChild(img);
   }
 
   const address = [home.street, [home.zip, home.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  if (address) details.appendChild(detailRow("Address", address));
-  if (home.canton) details.appendChild(detailRow("Canton", home.canton));
+  const location = address + (address && home.canton ? " - " : "") + (home.canton || "");
+  details.appendChild(detailRow("Location", location || "\u2014"));
   details.appendChild(detailRow("Price", fmtPrice(home.price)));
   details.appendChild(detailRow("Size", fmtSize(home.size)));
   details.appendChild(detailRow("Rooms", fmtRooms(home.rooms)));
-  if (home.houseType) {
-    let typeInfo = home.houseType;
-    if (home.floor != null && home.floor !== "") {
-      typeInfo += home.houseType === "House" ? " (" + home.floor + " floors)" : " (" + home.floor + ")";
-    }
-    details.appendChild(detailRow("House type", typeInfo));
+
+  let typeInfo = home.houseType || "\u2014";
+  if (home.houseType && home.floor != null && home.floor !== "") {
+    typeInfo += home.houseType === "House" ? " (" + home.floor + " floors)" : " (" + home.floor + ")";
   }
-  if (home.built) details.appendChild(detailRow("Built", String(home.built)));
-  if (home.renovated) details.appendChild(detailRow("Last renovation", String(home.renovated)));
+  details.appendChild(detailRow("House Type", typeInfo));
+  details.appendChild(detailRow("Built", home.built ? String(home.built) : "\u2014"));
+  details.appendChild(detailRow("Last Renovation", home.renovated ? String(home.renovated) : "\u2014"));
 
   let garageText = "No";
   if (home.garage) {
@@ -272,31 +344,8 @@ function render(home) {
   if (status) badge.classList.add(STATUS_STYLE[status] || "gray");
   details.appendChild(detailRow("Status", badge));
 
-  if (home.url && /^https?:\/\//i.test(home.url)) {
-    const link = document.createElement("a");
-    link.href = home.url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = "Open listing";
-    details.appendChild(detailRow("Listing", link));
-  }
-
-  if (home.detailUrl && /^https?:\/\//i.test(home.detailUrl)) {
-    const link = document.createElement("a");
-    link.href = home.detailUrl;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = "Open detailed info";
-    details.appendChild(detailRow("Detailed info", link));
-  }
-
-  const notesWrap = document.getElementById("v-notes-wrap");
-  if (home.notes) {
-    notesWrap.hidden = false;
-    document.getElementById("v-notes").textContent = home.notes;
-  } else {
-    notesWrap.hidden = true;
-  }
+  details.appendChild(detailRow("Listing URL", urlLink(home.url, "Open listing")));
+  details.appendChild(detailRow("Detailed Info URL", urlLink(home.detailUrl, "Open detailed info")));
 
   const parts = [];
   if (home.street) parts.push(home.street);
@@ -322,6 +371,7 @@ function render(home) {
     dirEl.appendChild(p);
   }
 
+  renderNotesDocs(home);
   renderFinance(home);
   renderRealtor(home);
 }
@@ -371,6 +421,26 @@ document.getElementById("btn-back").addEventListener("click", () => {
 
 document.getElementById("btn-edit").addEventListener("click", () => {
   location.replace("home.html?code=" + encodeURIComponent(state.code) + "&id=" + encodeURIComponent(state.id));
+});
+
+function openLightbox(src, alt) {
+  const box = document.getElementById("lightbox");
+  const img = document.getElementById("lightbox-img");
+  img.src = src;
+  img.alt = alt || "";
+  box.hidden = false;
+}
+
+function closeLightbox() {
+  const box = document.getElementById("lightbox");
+  if (!box || box.hidden) return;
+  box.hidden = true;
+  document.getElementById("lightbox-img").src = "";
+}
+
+document.getElementById("lightbox").addEventListener("click", closeLightbox);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeLightbox();
 });
 
 init();
