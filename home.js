@@ -148,34 +148,32 @@ async function init() {
   state.code = code;
   state.id = getParam("id");
   let d = getDraft(code);
-  let homes = d ? (Array.isArray(d) ? d : d.homes || []) : null;
-  if (!homes) {
-    let saved = [];
-    let name = "";
-    let settings = {};
-    try {
-      const res = await getFile(creds.user, creds.password, code);
-      const data = res && res.json && typeof res.json === "object" ? res.json : {};
-      saved = Array.isArray(data.homes) ? data.homes : [];
-      name = typeof data.name === "string" ? data.name : "";
-      settings = data.settings || {};
-    } catch (err) {
-      if (err.message === "Invalid credentials.") {
-        signOut();
-        return;
-      }
-      toast(err.message, false);
+  let homes = null;
+  try {
+    const res = await getFile(creds.user, creds.password, code);
+    const data = res && res.json && typeof res.json === "object" ? res.json : {};
+    homes = Array.isArray(data.homes) ? data.homes : [];
+    state.name = typeof data.name === "string" ? data.name : "";
+    state.settings = data.settings || {};
+    d = { name: state.name, homes, settings: state.settings };
+    setDraft(code, d);
+  } catch (err) {
+    if (err.message === "Invalid credentials.") {
+      signOut();
+      return;
     }
-    homes = saved;
-    state.name = name;
-    state.settings = settings;
-    setDraft(code, { name, homes, settings });
-  } else if (Array.isArray(d)) {
-    state.name = "";
-    state.settings = {};
-  } else {
-    state.name = d.name || "";
-    state.settings = d.settings || {};
+    toast(err.message, false);
+  }
+  if (!homes) {
+    if (d) {
+      homes = Array.isArray(d) ? d : d.homes || [];
+      state.name = d && !Array.isArray(d) ? d.name || "" : "";
+      state.settings = d && !Array.isArray(d) ? d.settings || {} : {};
+    } else {
+      homes = [];
+      state.name = "";
+      state.settings = {};
+    }
   }
   state.homes = homes;
   if (state.id) {

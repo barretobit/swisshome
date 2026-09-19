@@ -386,25 +386,28 @@ async function init() {
   empty.textContent = "Loading\u2026";
 
   const draft = getDraft(code);
-  let homes;
-  if (draft) {
-    const arr = Array.isArray(draft);
-    homes = arr ? draft : draft.homes || [];
-    state.name = arr ? "" : draft.name || "";
-    state.settings = arr || !draft.settings ? { combinedIncome: null } : draft.settings;
-  } else {
-    try {
-      const res = await getFile(creds.user, creds.password, code);
-      const data = res && res.json && typeof res.json === "object" ? res.json : {};
-      homes = Array.isArray(data.homes) ? data.homes : [];
-      state.name = typeof data.name === "string" ? data.name : "";
-      state.settings = data.settings || { combinedIncome: null };
-    } catch (err) {
-      if (err.message === "Invalid credentials.") {
-        signOut();
-        return;
-      }
-      toast(err.message, false);
+  let homes = null;
+  try {
+    const res = await getFile(creds.user, creds.password, code);
+    const data = res && res.json && typeof res.json === "object" ? res.json : {};
+    homes = Array.isArray(data.homes) ? data.homes : [];
+    state.name = typeof data.name === "string" ? data.name : "";
+    state.settings = data.settings || { combinedIncome: null };
+    setDraft(code, { name: state.name, homes, settings: state.settings });
+  } catch (err) {
+    if (err.message === "Invalid credentials.") {
+      signOut();
+      return;
+    }
+    toast(err.message, false);
+  }
+  if (!homes) {
+    if (draft) {
+      const arr = Array.isArray(draft);
+      homes = arr ? draft : draft.homes || [];
+      state.name = arr ? "" : draft.name || "";
+      state.settings = arr || !draft.settings ? { combinedIncome: null } : draft.settings;
+    } else {
       homes = [];
       state.name = "";
       state.settings = { combinedIncome: null };

@@ -22,7 +22,7 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 async function api(path, opts = {}) {
   let res;
   try {
-    res = await fetch(API + path, opts);
+    res = await fetch(API + path, { ...opts, cache: "no-store" });
   } catch {
     throw new Error("Cannot reach the server. Check your connection.");
   }
