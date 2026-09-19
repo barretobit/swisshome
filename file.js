@@ -5,6 +5,7 @@ let saving = false;
 
 const STATUS_STYLE = {
   "Awaiting Information": "gray",
+  "Reviewing Information": "gray",
   "Applied for Visit": "amber",
   "In Contact": "blue",
   "To Visit": "green",
@@ -12,7 +13,7 @@ const STATUS_STYLE = {
   Thinking: "amber",
 };
 
-const STATUS_ORDER = ["Awaiting Information", "In Contact", "Applied for Visit", "To Visit", "Thinking", "Rejected"];
+const STATUS_ORDER = ["Awaiting Information", "Reviewing Information", "In Contact", "Applied for Visit", "To Visit", "Thinking", "Rejected"];
 
 function saveDraft() {
   setDraft(state.code, { name: state.name, homes: state.homes, settings: state.settings });

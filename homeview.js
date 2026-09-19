@@ -2,6 +2,7 @@ const state = { code: "", id: null, name: "", settings: {}, homes: [], home: nul
 
 const STATUS_STYLE = {
   "Awaiting Information": "gray",
+  "Reviewing Information": "gray",
   "Applied for Visit": "amber",
   "In Contact": "blue",
   "To Visit": "green",
