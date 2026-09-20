@@ -15,7 +15,7 @@
   <div id="toast"></div>
 
   <header class="topbar">
-    <a href="files.html" class="logo small"><img src="favicon.svg" class="logo-icon" alt=""> Swiss Home</a>
+    <a href="homes.html" class="logo small"><img src="favicon.svg" class="logo-icon" alt=""> Swiss Home</a>
     <button id="btn-home-cancel" type="button" class="btn ghost sm">Cancel</button>
   </header>
 
@@ -68,17 +68,7 @@
           <option>House</option>
         </select>
       </label>
-      <label id="house-floor-wrap" hidden><span id="house-floor-label">Floor</span>
-        <select id="f-floor" hidden>
-          <option value="">&mdash;</option>
-          <option>EG</option>
-          <option>1 OG</option>
-          <option>2 OG</option>
-          <option>3 OG</option>
-          <option>4 OG</option>
-          <option>5 OG</option>
-        </select>
-        <input id="f-floors" type="number" min="1" step="1" placeholder="2" hidden></label>
+      <label id="house-floor-wrap" hidden><span id="house-floor-label">Floor</span><input id="f-floor" type="number" min="0" step="1" placeholder="2"></label>
       <label>Built Year<input id="f-built" type="number" min="1500" max="2100" placeholder="2019"></label>
       <label>Last Renovation Year<input id="f-renovated" type="number" min="1500" max="2100" placeholder="2024"></label>
 

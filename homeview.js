@@ -1,14 +1,4 @@
-const state = { code: "", id: null, name: "", settings: {}, homes: [], home: null };
-
-const STATUS_STYLE = {
-  "Awaiting Information": "gray",
-  "Reviewing Information": "gray",
-  "Applied for Visit": "amber",
-  "In Contact": "blue",
-  "To Visit": "green",
-  Rejected: "red",
-  Thinking: "amber",
-};
+const state = { id: null, home: null };
 
 function detailRow(label, value) {
   const row = document.createElement("div");
@@ -113,7 +103,7 @@ function renderFinance(home) {
   el.innerHTML = "";
   const price = home.price || 0;
   let extra = 0;
-  if (home.garage && !home.garageIncluded && home.garagePrice != null) extra = home.garagePrice;
+  if (home.garage && !home.garage_included && home.garage_price != null) extra = home.garage_price;
   const total = price + extra;
 
   el.appendChild(detailRow("Purchase Price", fmtPrice(price)));
@@ -121,7 +111,7 @@ function renderFinance(home) {
   el.appendChild(detailRow("Total Value", fmtPrice(total)));
   el.appendChild(detailRow("Closing Costs (0.25%)", fmtPrice(total * 0.0025)));
 
-  const income = state.settings && state.settings.combinedIncome;
+  const income = getIncome();
 
   const down = financeControl("Down Payment", "25%");
   down.slider.min = "20";
@@ -186,32 +176,9 @@ function renderFinance(home) {
   if (!(income && income > 0)) {
     const p = document.createElement("p");
     p.className = "empty small";
-    p.textContent = "Set your Combined Gross Income in the file settings to see affordability.";
+    p.textContent = "No combined income set for this user.";
     el.appendChild(p);
   }
-}
-
-function visitKey(v) {
-  return v.date + "T" + (v.time || "00:00");
-}
-
-function nowKey() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, "0");
-  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
-}
-
-function nextVisit(home) {
-  const now = nowKey();
-  const vs = (Array.isArray(home.visits) ? home.visits : []).filter((v) => v && v.date && visitKey(v) >= now);
-  vs.sort((a, b) => (visitKey(a) < visitKey(b) ? -1 : 1));
-  return vs[0] || null;
-}
-
-function fmtVisit(v) {
-  const d = new Date(visitKey(v));
-  const date = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-  return date + (v.time ? ", " + v.time : "");
 }
 
 function notesBlock(title) {
@@ -228,7 +195,7 @@ function renderNotesDocs(home) {
   const el = document.getElementById("v-notes-docs");
   el.innerHTML = "";
 
-  const visit = nextVisit(home);
+  const visit = nextVisit(home.visits);
   if (visit) {
     const visitBlockEl = notesBlock("Next Scheduled View");
     const v = document.createElement("div");
@@ -258,7 +225,7 @@ function renderNotesDocs(home) {
   }
   el.appendChild(notes);
 
-  const links = Array.isArray(home.docsLinks) ? home.docsLinks : [];
+  const links = Array.isArray(home.links) ? home.links : [];
   const docs = notesBlock("Docs Links");
   if (links.length) {
     const list = document.createElement("div");
@@ -301,7 +268,7 @@ function realtorCell(label, value) {
 function renderRealtor(home) {
   const card = document.getElementById("v-realtor-card");
   const wrap = document.getElementById("v-realtor");
-  if (!home.realtorName && !home.realtorPhone && !home.realtorEmail) {
+  if (!home.realtor_name && !home.realtor_phone && !home.realtor_email) {
     card.hidden = true;
     return;
   }
@@ -309,39 +276,38 @@ function renderRealtor(home) {
   wrap.innerHTML = "";
   const grid = document.createElement("div");
   grid.className = "realtor-grid";
-  if (home.realtorName) grid.appendChild(realtorCell("Name", home.realtorName));
-  if (home.realtorPhone) {
+  if (home.realtor_name) grid.appendChild(realtorCell("Name", home.realtor_name));
+  if (home.realtor_phone) {
     const tel = document.createElement("a");
-    tel.href = "tel:" + String(home.realtorPhone).replace(/\s+/g, "");
-    tel.textContent = home.realtorPhone;
+    tel.href = "tel:" + String(home.realtor_phone).replace(/\s+/g, "");
+    tel.textContent = home.realtor_phone;
     grid.appendChild(realtorCell("Phone", tel));
   }
-  if (home.realtorEmail) {
+  if (home.realtor_email) {
     const mail = document.createElement("a");
-    mail.href = "mailto:" + home.realtorEmail;
-    mail.textContent = home.realtorEmail;
+    mail.href = "mailto:" + home.realtor_email;
+    mail.textContent = home.realtor_email;
     grid.appendChild(realtorCell("Email", mail));
   }
   wrap.appendChild(grid);
 }
 
 function render(home) {
-  state.home = home;
   document.getElementById("v-title").textContent = home.title || "Untitled";
 
   const details = document.getElementById("v-details");
   details.innerHTML = "";
 
-  if (home.mainImage && /^https?:\/\//i.test(home.mainImage)) {
+  if (home.main_image && /^https?:\/\//i.test(home.main_image)) {
     const img = document.createElement("img");
     img.className = "main-image";
-    img.src = home.mainImage;
+    img.src = home.main_image;
     img.alt = (home.title || "Home") + " main image";
     img.loading = "lazy";
     img.onerror = () => {
       img.style.display = "none";
     };
-    img.addEventListener("click", () => openLightbox(home.mainImage, img.alt));
+    img.addEventListener("click", () => openLightbox(home.main_image, img.alt));
     details.appendChild(img);
   }
 
@@ -352,9 +318,9 @@ function render(home) {
   details.appendChild(detailRow("Size", fmtSize(home.size)));
   details.appendChild(detailRow("Rooms", fmtRooms(home.rooms)));
 
-  let typeInfo = home.houseType || "\u2014";
-  if (home.houseType && home.floor != null && home.floor !== "") {
-    typeInfo += home.houseType === "House" ? " (" + home.floor + " floors)" : " (" + home.floor + ")";
+  let typeInfo = home.house_type || "\u2014";
+  if (home.house_type && home.floor != null && home.floor !== "") {
+    typeInfo += home.house_type === "House" ? " (" + home.floor + " floors)" : " (" + home.floor + " floor)";
   }
   details.appendChild(detailRow("House Type", typeInfo));
   details.appendChild(detailRow("Built", home.built ? String(home.built) : "\u2014"));
@@ -362,7 +328,7 @@ function render(home) {
 
   let garageText = "No";
   if (home.garage) {
-    garageText = home.garageIncluded ? "Yes (included in price)" : home.garagePrice != null ? "Yes (+ " + fmtPrice(home.garagePrice) + ")" : "Yes";
+    garageText = home.garage_included ? "Yes (included in price)" : home.garage_price != null ? "Yes (+ " + fmtPrice(home.garage_price) + ")" : "Yes";
   }
   details.appendChild(detailRow("Garage", garageText));
 
@@ -405,58 +371,30 @@ function render(home) {
 }
 
 async function init() {
-  const creds = requireAuth();
-  if (!creds) return;
-  const code = getParam("code");
-  if (!code) {
-    location.replace("files.html");
+  if (!requireAuth()) return;
+  const id = getParam("id");
+  if (!id) {
+    location.replace("homes.html");
     return;
   }
-  state.code = code;
-  state.id = getParam("id");
-  let d = getDraft(code);
-  let homes = null;
+  state.id = Number(id);
   try {
-    const res = await getFile(creds.user, creds.password, code);
-    const data = res && res.json && typeof res.json === "object" ? res.json : {};
-    homes = Array.isArray(data.homes) ? data.homes : [];
-    state.name = typeof data.name === "string" ? data.name : "";
-    state.settings = data.settings || {};
-    d = { name: state.name, homes, settings: state.settings };
-    setDraft(code, d);
+    const res = await getHome(state.id);
+    const home = res && res.home && typeof res.home === "object" ? res.home : res;
+    state.home = home;
+    render(home);
   } catch (err) {
-    if (err.message === "Invalid credentials.") {
-      signOut();
-      return;
-    }
     toast(err.message, false);
+    location.replace("homes.html");
   }
-  if (!homes) {
-    if (d) {
-      homes = Array.isArray(d) ? d : d.homes || [];
-      state.name = (d && !Array.isArray(d) && d.name) || "";
-      state.settings = (d && !Array.isArray(d) && d.settings) || {};
-    } else {
-      homes = [];
-      state.name = "";
-      state.settings = {};
-    }
-  }
-  state.homes = homes;
-  const home = homes.find((h) => h.id === state.id);
-  if (!home) {
-    location.replace("file.html?code=" + encodeURIComponent(code));
-    return;
-  }
-  render(home);
 }
 
 document.getElementById("btn-back").addEventListener("click", () => {
-  location.replace("file.html?code=" + encodeURIComponent(state.code));
+  location.replace("homes.html");
 });
 
 document.getElementById("btn-edit").addEventListener("click", () => {
-  location.replace("home.html?code=" + encodeURIComponent(state.code) + "&id=" + encodeURIComponent(state.id));
+  location.replace("home.html?id=" + encodeURIComponent(state.id));
 });
 
 function openLightbox(src, alt) {
@@ -490,13 +428,12 @@ function closeNotesModal() {
 async function saveNotes() {
   const home = state.home;
   if (!home) return;
-  home.notes = document.getElementById("notes-modal-text").value.trim();
-  const data = { name: state.name, homes: state.homes, settings: state.settings };
-  setDraft(state.code, data);
+  const notes = document.getElementById("notes-modal-text").value.trim();
+  home.notes = notes;
   closeNotesModal();
   renderNotesDocs(home);
   try {
-    await saveFile(session.user, session.password, state.code, data);
+    await updateHome(state.id, { notes: notes || null });
   } catch (err) {
     toast(err.message, false);
   }

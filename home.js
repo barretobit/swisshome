@@ -1,31 +1,15 @@
-const state = { code: "", id: null, visits: [], docsLinks: [], homes: [], name: "", settings: {} };
+const state = { id: null, visits: [], links: [], serverVisitIds: new Set(), serverLinkIds: new Set() };
 
-function currentData() {
-  const d = getDraft(state.code);
-  if (Array.isArray(d)) return { name: state.name, homes: d, settings: state.settings };
-  if (d) return d;
-  return { name: state.name, homes: state.homes, settings: state.settings };
+function $(id) {
+  return document.getElementById(id);
 }
 
-async function persistHome() {
-  try {
-    await saveFile(session.user, session.password, state.code, currentData());
-  } catch (err) {
-    toast(err.message, false);
-  }
+function val(id) {
+  return $(id).value.trim();
 }
 
-function syncVisits() {
-  if (!state.id) return;
-  const d = getDraft(state.code);
-  if (!d) return;
-  const homes = Array.isArray(d) ? d : d.homes || [];
-  const home = homes.find((h) => h.id === state.id);
-  if (!home) return;
-  home.visits = state.visits.map((v) => ({ ...v }));
-  if (Array.isArray(d)) setDraft(state.code, homes);
-  else setDraft(state.code, d);
-  persistHome();
+function num(id) {
+  return parseNum($(id).value);
 }
 
 function fmtVisit(v) {
@@ -34,83 +18,33 @@ function fmtVisit(v) {
   return (date ? date : "") + (v.time ? ", " + v.time : "");
 }
 
-function fillForm(home) {
-  document.getElementById("home-heading").textContent = home.title || "Edit home";
-  document.getElementById("f-title").value = home.title || "";
-  document.getElementById("f-street").value = home.street || "";
-  document.getElementById("f-zip").value = home.zip || "";
-  document.getElementById("f-city").value = home.city || "";
-  document.getElementById("f-canton").value = home.canton || "";
-  document.getElementById("f-price").value = home.price ?? "";
-  document.getElementById("f-size").value = home.size ?? "";
-  document.getElementById("f-rooms").value = home.rooms ?? "";
-  document.getElementById("f-built").value = home.built ?? "";
-  document.getElementById("f-renovated").value = home.renovated ?? "";
-  document.getElementById("f-house-type").value = home.houseType || "";
-  document.getElementById("f-floor").value = "";
-  document.getElementById("f-floors").value = "";
-  if (home.houseType === "House") {
-    document.getElementById("f-floors").value = home.floor ?? "";
-  } else if (home.houseType === "Apartment" || home.houseType === "Duplex") {
-    let floorVal = home.floor;
-    if (typeof floorVal === "number") floorVal = floorVal === 0 ? "EG" : String(floorVal) + " OG";
-    document.getElementById("f-floor").value = floorVal ?? "";
+function updateHouseTypeUI() {
+  const type = $("f-house-type").value;
+  const wrap = $("house-floor-wrap");
+  if (type === "Apartment" || type === "Duplex") {
+    $("house-floor-label").textContent = "Floor";
+    wrap.hidden = false;
+  } else if (type === "House") {
+    $("house-floor-label").textContent = "Floors";
+    wrap.hidden = false;
+  } else {
+    wrap.hidden = true;
   }
-  updateHouseTypeUI();
-  document.getElementById("f-url").value = home.url || "";
-  document.getElementById("f-main-image").value = home.mainImage || "";
-  document.getElementById("f-status").value = home.status || "";
-  document.getElementById("f-notes").value = home.notes || "";
-  document.getElementById("f-realtor").value = home.realtorName || "";
-  document.getElementById("f-realtor-phone").value = home.realtorPhone ? String(home.realtorPhone).replace(/\s+/g, "").replace(/^\+41/, "") : "";
-  document.getElementById("f-realtor-email").value = home.realtorEmail || "";
-  document.getElementById("f-garage").checked = !!home.garage;
-  document.getElementById("f-garage-included").checked = !!home.garageIncluded;
-  document.getElementById("f-garage-price").value = home.garagePrice ?? "";
-  updateGarageUI();
-  state.visits = Array.isArray(home.visits) ? home.visits.map((v) => ({ ...v })) : [];
-  renderVisits();
-  state.docsLinks = Array.isArray(home.docsLinks) ? home.docsLinks.map((l) => ({ ...l })) : [];
-  renderDocsLinks();
 }
 
-function renderDocsLinks() {
-  const el = document.getElementById("docs-links-list");
-  el.innerHTML = "";
-  if (!state.docsLinks.length) {
-    const p = document.createElement("p");
-    p.className = "empty small";
-    p.textContent = "No links yet.";
-    el.appendChild(p);
-    return;
+function updateGarageUI() {
+  const has = $("f-garage").checked;
+  const included = $("f-garage-included").checked;
+  $("garage-extra").hidden = !has;
+  $("garage-value-wrap").hidden = !has || included;
+  if (!has) {
+    $("f-garage-included").checked = false;
+    $("f-garage-price").value = "";
   }
-  state.docsLinks.forEach((l, i) => {
-    const row = document.createElement("div");
-    row.className = "link-row";
-    const info = document.createElement("div");
-    const title = document.createElement("div");
-    title.className = "link-title";
-    title.textContent = l.title || l.url || "Link";
-    info.appendChild(title);
-    if (l.url) {
-      const url = document.createElement("div");
-      url.className = "link-url";
-      url.textContent = l.url;
-      info.appendChild(url);
-    }
-    const del = button("Remove", ["btn", "ghost", "sm", "danger"]);
-    del.addEventListener("click", () => {
-      state.docsLinks.splice(i, 1);
-      renderDocsLinks();
-    });
-    row.appendChild(info);
-    row.appendChild(del);
-    el.appendChild(row);
-  });
 }
 
 function renderVisits() {
-  const el = document.getElementById("visits-list");
+  const el = $("visits-list");
   el.innerHTML = "";
   if (!state.visits.length) {
     const p = document.createElement("p");
@@ -129,7 +63,6 @@ function renderVisits() {
     del.addEventListener("click", () => {
       state.visits.splice(i, 1);
       renderVisits();
-      syncVisits();
     });
     row.appendChild(label);
     row.appendChild(del);
@@ -137,195 +70,215 @@ function renderVisits() {
   });
 }
 
-async function init() {
-  const creds = requireAuth();
-  if (!creds) return;
-  const code = getParam("code");
-  if (!code) {
-    location.replace("files.html");
+function renderLinks() {
+  const el = $("docs-links-list");
+  el.innerHTML = "";
+  if (!state.links.length) {
+    const p = document.createElement("p");
+    p.className = "empty small";
+    p.textContent = "No links yet.";
+    el.appendChild(p);
     return;
   }
-  state.code = code;
-  state.id = getParam("id");
-  let d = getDraft(code);
-  let homes = null;
-  try {
-    const res = await getFile(creds.user, creds.password, code);
-    const data = res && res.json && typeof res.json === "object" ? res.json : {};
-    homes = Array.isArray(data.homes) ? data.homes : [];
-    state.name = typeof data.name === "string" ? data.name : "";
-    state.settings = data.settings || {};
-    d = { name: state.name, homes, settings: state.settings };
-    setDraft(code, d);
-  } catch (err) {
-    if (err.message === "Invalid credentials.") {
-      signOut();
+  state.links.forEach((l, i) => {
+    const row = document.createElement("div");
+    row.className = "link-row";
+    const info = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "link-title";
+    title.textContent = l.title || l.url || "Link";
+    info.appendChild(title);
+    if (l.url) {
+      const url = document.createElement("div");
+      url.className = "link-url";
+      url.textContent = l.url;
+      info.appendChild(url);
+    }
+    const del = button("Remove", ["btn", "ghost", "sm", "danger"]);
+    del.addEventListener("click", () => {
+      state.links.splice(i, 1);
+      renderLinks();
+    });
+    row.appendChild(info);
+    row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+
+function fillForm(home) {
+  $("home-heading").textContent = home.title || "Edit home";
+  $("f-title").value = home.title || "";
+  $("f-street").value = home.street || "";
+  $("f-zip").value = home.zip || "";
+  $("f-city").value = home.city || "";
+  $("f-canton").value = home.canton || "";
+  $("f-price").value = home.price ?? "";
+  $("f-size").value = home.size ?? "";
+  $("f-rooms").value = home.rooms ?? "";
+  $("f-built").value = home.built ?? "";
+  $("f-renovated").value = home.renovated ?? "";
+  $("f-house-type").value = home.house_type || "";
+  $("f-floor").value = home.floor ?? "";
+  $("f-url").value = home.url || "";
+  $("f-main-image").value = home.main_image || "";
+  $("f-status").value = home.status || "";
+  $("f-notes").value = home.notes || "";
+  $("f-realtor").value = home.realtor_name || "";
+  $("f-realtor-phone").value = home.realtor_phone ? String(home.realtor_phone).replace(/\s+/g, "").replace(/^\+41/, "") : "";
+  $("f-realtor-email").value = home.realtor_email || "";
+  $("f-garage").checked = !!home.garage;
+  $("f-garage-included").checked = !!home.garage_included;
+  $("f-garage-price").value = home.garage_price ?? "";
+  updateHouseTypeUI();
+  updateGarageUI();
+  state.visits = (Array.isArray(home.visits) ? home.visits : []).map((v) => ({ id: idOf(v), date: v.date, time: v.time }));
+  state.serverVisitIds = new Set(state.visits.map((v) => v.id).filter((v) => v != null));
+  renderVisits();
+  const rawLinks = Array.isArray(home.links) ? home.links : [];
+  state.links = rawLinks.map((l) => ({ id: idOf(l), title: l.title, url: l.url }));
+  state.serverLinkIds = new Set(state.links.map((l) => l.id).filter((l) => l != null));
+  renderLinks();
+}
+
+function collectHome() {
+  const phoneRaw = $("f-realtor-phone").value.replace(/\s+/g, "").replace(/^\+41/, "");
+  return {
+    title: val("f-title"),
+    street: val("f-street"),
+    zip: val("f-zip"),
+    city: val("f-city"),
+    canton: val("f-canton"),
+    price: num("f-price"),
+    size: num("f-size"),
+    rooms: num("f-rooms"),
+    built: num("f-built"),
+    renovated: num("f-renovated"),
+    house_type: val("f-house-type") || null,
+    floor: num("f-floor"),
+    url: val("f-url") || null,
+    main_image: val("f-main-image") || null,
+    status: val("f-status") || null,
+    notes: val("f-notes") || null,
+    realtor_name: val("f-realtor") || null,
+    realtor_phone: phoneRaw ? "+41" + phoneRaw : null,
+    realtor_email: val("f-realtor-email") || null,
+    garage: $("f-garage").checked ? 1 : 0,
+    garage_included: $("f-garage-included").checked,
+    garage_price: num("f-garage-price"),
+  };
+}
+
+async function saveChildren(homeId) {
+  const keptVisitIds = new Set(state.visits.map((v) => v.id).filter((v) => v != null));
+  for (const id of state.serverVisitIds) {
+    if (!keptVisitIds.has(id)) await visitsApi.remove(homeId, id);
+  }
+  for (const v of state.visits) {
+    if (v.id == null) {
+      await visitsApi.create(homeId, { date: v.date || null, time: v.time || null });
+    }
+  }
+  const keptLinkIds = new Set(state.links.map((l) => l.id).filter((l) => l != null));
+  for (const id of state.serverLinkIds) {
+    if (!keptLinkIds.has(id)) await linksApi.remove(homeId, id);
+  }
+  for (const l of state.links) {
+    if (l.id == null) {
+      await linksApi.create(homeId, { title: l.title || null, url: l.url || null });
+    }
+  }
+}
+
+async function init() {
+  if (!requireAuth()) return;
+  const id = getParam("id");
+  if (id) {
+    state.id = Number(id);
+    try {
+      const res = await getHome(state.id);
+      const home = res && res.home && typeof res.home === "object" ? res.home : res;
+      fillForm(home);
+    } catch (err) {
+      toast(err.message, false);
+      location.replace("homes.html");
       return;
     }
-    toast(err.message, false);
-  }
-  if (!homes) {
-    if (d) {
-      homes = Array.isArray(d) ? d : d.homes || [];
-      state.name = d && !Array.isArray(d) ? d.name || "" : "";
-      state.settings = d && !Array.isArray(d) ? d.settings || {} : {};
-    } else {
-      homes = [];
-      state.name = "";
-      state.settings = {};
-    }
-  }
-  state.homes = homes;
-  if (state.id) {
-    const home = homes.find((h) => h.id === state.id);
-    if (home) {
-      fillForm(home);
-    } else {
-      location.replace("file.html?code=" + encodeURIComponent(code));
-    }
   } else {
-    document.getElementById("home-heading").textContent = "New home";
-    document.getElementById("f-title").focus();
-    state.visits = [];
+    $("home-heading").textContent = "New home";
+    $("f-title").focus();
     renderVisits();
-    state.docsLinks = [];
-    renderDocsLinks();
+    renderLinks();
   }
 }
 
-function updateGarageUI() {
-  const has = document.getElementById("f-garage").checked;
-  const included = document.getElementById("f-garage-included").checked;
-  document.getElementById("garage-extra").hidden = !has;
-  document.getElementById("garage-value-wrap").hidden = !has || included;
-  if (!has) {
-    document.getElementById("f-garage-included").checked = false;
-    document.getElementById("f-garage-price").value = "";
-  }
-}
+$("f-house-type").addEventListener("change", updateHouseTypeUI);
+$("f-garage").addEventListener("change", updateGarageUI);
+$("f-garage-included").addEventListener("change", updateGarageUI);
 
-function updateHouseTypeUI() {
-  const type = document.getElementById("f-house-type").value;
-  const wrap = document.getElementById("house-floor-wrap");
-  const floorSel = document.getElementById("f-floor");
-  const floorsInp = document.getElementById("f-floors");
-  if (type === "Apartment" || type === "Duplex") {
-    document.getElementById("house-floor-label").textContent = "Floor";
-    floorSel.hidden = false;
-    floorsInp.hidden = true;
-    wrap.hidden = false;
-  } else if (type === "House") {
-    document.getElementById("house-floor-label").textContent = "Floors";
-    floorSel.hidden = true;
-    floorsInp.hidden = false;
-    wrap.hidden = false;
-  } else {
-    wrap.hidden = true;
-  }
-}
-
-document.getElementById("f-house-type").addEventListener("change", updateHouseTypeUI);
-
-document.getElementById("home-form").addEventListener("keydown", (e) => {
+$("home-form").addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   const tag = e.target && e.target.tagName;
   if (tag === "TEXTAREA" || tag === "BUTTON") return;
   e.preventDefault();
 });
 
-document.getElementById("f-garage").addEventListener("change", updateGarageUI);
-document.getElementById("f-garage-included").addEventListener("change", updateGarageUI);
-
-document.getElementById("btn-add-visit").addEventListener("click", () => {
-  const date = document.getElementById("v-date").value;
-  const time = document.getElementById("v-time").value;
+$("btn-add-visit").addEventListener("click", () => {
+  const date = $("v-date").value;
+  const time = $("v-time").value;
   if (!date) {
     toast("Please pick a date.", false);
     return;
   }
-  state.visits.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), date, time });
-  document.getElementById("v-date").value = "";
-  document.getElementById("v-time").value = "";
+  state.visits.push({ id: null, date, time });
+  $("v-date").value = "";
+  $("v-time").value = "";
   renderVisits();
-  syncVisits();
 });
 
-document.getElementById("btn-add-docs-link").addEventListener("click", () => {
-  const title = document.getElementById("dl-title").value.trim();
-  const url = document.getElementById("dl-url").value.trim();
+$("btn-add-docs-link").addEventListener("click", () => {
+  const title = $("dl-title").value.trim();
+  const url = $("dl-url").value.trim();
   if (!url) {
     toast("Please enter a URL.", false);
     return;
   }
-  state.docsLinks.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title, url });
-  document.getElementById("dl-title").value = "";
-  document.getElementById("dl-url").value = "";
-  renderDocsLinks();
+  state.links.push({ id: null, title, url });
+  $("dl-title").value = "";
+  $("dl-url").value = "";
+  renderLinks();
 });
 
-document.getElementById("home-form").addEventListener("submit", async (e) => {
+$("home-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  let d = getDraft(state.code);
-  if (Array.isArray(d)) d = { name: state.name, homes: d, settings: state.settings };
-  d = d || { name: state.name, homes: [], settings: state.settings };
-  d.name = d.name || state.name;
-  d.settings = d.settings || state.settings;
-  const homes = Array.isArray(d.homes) ? d.homes : [];
-  const phoneRaw = document.getElementById("f-realtor-phone").value.replace(/\s+/g, "").replace(/^\+41/, "");
-  const ht = document.getElementById("f-house-type").value;
-  const floorRaw = ht === "House" ? document.getElementById("f-floors").value : document.getElementById("f-floor").value;
-  if ((ht === "Apartment" || ht === "Duplex") && !floorRaw) {
-    toast("Please select the floor.", false);
+  if (["Apartment", "Duplex"].includes($("f-house-type").value) && $("f-floor").value === "") {
+    toast("Please enter the floor.", false);
     return;
   }
-  const home = {
-    id: state.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-    title: document.getElementById("f-title").value.trim(),
-    street: document.getElementById("f-street").value.trim(),
-    zip: document.getElementById("f-zip").value.trim(),
-    city: document.getElementById("f-city").value.trim(),
-    canton: document.getElementById("f-canton").value,
-    price: parseNum(document.getElementById("f-price").value),
-    size: parseNum(document.getElementById("f-size").value),
-    rooms: parseNum(document.getElementById("f-rooms").value),
-    built: parseNum(document.getElementById("f-built").value),
-    renovated: parseNum(document.getElementById("f-renovated").value),
-    houseType: ht,
-    floor: ht === "House" ? parseNum(floorRaw) : floorRaw,
-    url: document.getElementById("f-url").value.trim(),
-    mainImage: document.getElementById("f-main-image").value.trim(),
-    status: document.getElementById("f-status").value,
-    notes: document.getElementById("f-notes").value.trim(),
-    realtorName: document.getElementById("f-realtor").value.trim(),
-    realtorPhone: phoneRaw ? "+41" + phoneRaw : "",
-    realtorEmail: document.getElementById("f-realtor-email").value.trim(),
-    garage: document.getElementById("f-garage").checked,
-    garageIncluded: document.getElementById("f-garage-included").checked,
-    garagePrice: parseNum(document.getElementById("f-garage-price").value),
-    visits: state.visits.map((v) => ({ ...v })),
-    docsLinks: state.docsLinks.map((l) => ({ ...l })),
-  };
-  const i = homes.findIndex((h) => h.id === home.id);
-  if (i >= 0) homes[i] = home;
-  else homes.push(home);
-  d.homes = homes;
-  setDraft(state.code, d);
-  state.homes = homes;
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.textContent = "Saving\u2026";
+  const data = collectHome();
   try {
-    await saveFile(session.user, session.password, state.code, d);
+    let homeId = state.id;
+    if (homeId) {
+      await updateHome(homeId, data);
+    } else {
+      const res = await createHome({ ...data, user_id: session.userId });
+      homeId = createdHomeId(res) ?? (await newestHomeId());
+      if (homeId == null) throw new Error("Could not determine the new home.");
+    }
+    await saveChildren(homeId);
+    location.replace("home-view.html?id=" + encodeURIComponent(homeId));
   } catch (err) {
     toast(err.message, false);
-    return;
+    btn.disabled = false;
+    btn.textContent = "Save home";
   }
-  location.replace("home-view.html?code=" + encodeURIComponent(state.code) + "&id=" + encodeURIComponent(home.id));
 });
 
-document.getElementById("btn-home-cancel").addEventListener("click", () => {
-  if (state.id) {
-    location.replace("home-view.html?code=" + encodeURIComponent(state.code) + "&id=" + encodeURIComponent(state.id));
-  } else {
-    location.replace("file.html?code=" + encodeURIComponent(state.code));
-  }
+$("btn-home-cancel").addEventListener("click", () => {
+  if (state.id) location.replace("home-view.html?id=" + encodeURIComponent(state.id));
+  else location.replace("homes.html");
 });
 
 init();

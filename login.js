@@ -1,41 +1,23 @@
-async function listAndRedirect() {
-  try {
-    const res = await listFiles(session.user, session.password);
-    const codes = res.codes || [];
-    if (codes.length === 1) {
-      location.replace("file.html?code=" + encodeURIComponent(codes[0].code));
-      return;
-    }
-  } catch {}
-  location.replace("files.html");
-}
-
-async function tryLogin(user, password) {
-  await login(user, password);
-  session.set(user, password);
-  await listAndRedirect();
-}
-
 async function init() {
-  if (session.user && session.password) {
-    try {
-      await login(session.user, session.password);
-      await listAndRedirect();
-      return;
-    } catch {}
+  if (session.userId) {
+    location.replace("homes.html");
+    return;
   }
-  session.clear();
 }
 
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector('button[type="submit"]');
   const user = document.getElementById("login-user").value.trim();
-  const password = document.getElementById("login-pass").value;
+  const pass = document.getElementById("login-pass").value;
   btn.disabled = true;
   btn.textContent = "Signing in\u2026";
   try {
-    await tryLogin(user, password);
+    const res = await authLogin(user, pass);
+    if (!res || res.user_id == null) throw new Error("Login failed.");
+    session.set(res.user_id);
+    session.setIncome(res.combined_income ?? null);
+    location.replace("homes.html");
   } catch (err) {
     toast(err.message, false);
     btn.textContent = "Sign in";
