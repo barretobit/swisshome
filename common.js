@@ -28,9 +28,15 @@ const session = {
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 async function api(path, opts = {}) {
+  const method = (opts.method || "GET").toUpperCase();
+  const fetchOpts = {
+    ...opts,
+    cache: opts.cache ?? (method === "GET" ? "no-cache" : "no-store"),
+  };
+
   let res;
   try {
-    res = await fetch(API + path, { ...opts, cache: "no-store" });
+    res = await fetch(API + path, fetchOpts);
   } catch {
     throw new Error("Cannot reach the server. Check your connection.");
   }
