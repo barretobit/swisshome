@@ -1,4 +1,12 @@
-const API = "https://randata.onrender.com";
+const API = "https://randombit.tail541a06.ts.net";
+const APP_VERSION = "v0.1";
+
+if (!document.getElementById("app-version")) {
+  const versionEl = document.createElement("div");
+  versionEl.id = "app-version";
+  versionEl.textContent = APP_VERSION;
+  document.body.appendChild(versionEl);
+}
 
 const session = {
   get user() {

@@ -21,6 +21,20 @@ body {
   min-height: 100vh;
 }
 
+#app-version {
+  position: fixed;
+  left: 10px;
+  bottom: 8px;
+  z-index: 50;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  color: rgba(95, 99, 104, 0.75);
+  pointer-events: none;
+  user-select: none;
+}
+
 .view { padding: 0; }
 .center { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
 .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
