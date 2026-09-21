@@ -111,6 +111,12 @@ function idOf(obj) {
   return obj && (obj.home_id ?? obj.id ?? obj.visit_id ?? obj.link_id);
 }
 
+function listPayload(payload, key) {
+  if (payload && Array.isArray(payload[key])) return payload[key];
+  if (Array.isArray(payload)) return payload;
+  return [];
+}
+
 function createdHomeId(res) {
   if (!res) return null;
   const direct = idOf(res);
@@ -121,7 +127,8 @@ function createdHomeId(res) {
 
 async function newestHomeId() {
   const list = await listHomes();
-  return Array.isArray(list) && list.length ? idOf(list[0]) : null;
+  const arr = listPayload(list, "homes");
+  return arr.length ? idOf(arr[0]) : null;
 }
 
 function getIncome() {

@@ -237,9 +237,10 @@ async function load() {
   try {
     const list = await listHomes();
     const items = await Promise.all(
-      (Array.isArray(list) ? list : []).map(async (home) => {
+      listPayload(list, "homes").map(async (home) => {
         try {
-          return { home, visits: await visitsApi.list(idOf(home)) };
+          const vres = await visitsApi.list(idOf(home));
+          return { home, visits: listPayload(vres, "visits") };
         } catch {
           return { home, visits: [] };
         }
