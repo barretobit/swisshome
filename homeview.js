@@ -1,4 +1,5 @@
 const state = { id: null, home: null };
+const FIRST_MORTGAGE_LTV = 2 / 3;
 
 function detailRow(label, value) {
   const row = document.createElement("div");
@@ -55,9 +56,7 @@ function lazyMapFrame(container, src) {
   io.observe(container);
 }
 
-function affordabilityPct(total, income, equityPct) {
-  const mortgage = total * (1 - equityPct);
-  const second = Math.max(0, mortgage - total * 0.67);
+function affordabilityPct(total, income, mortgage, second) {
   const interest = mortgage * 0.05;
   const amort = second / 15;
   const ancillary = total * 0.01;
@@ -109,7 +108,9 @@ function renderFinance(home) {
   el.appendChild(detailRow("Purchase Price", fmtPrice(price)));
   if (extra > 0) el.appendChild(detailRow("Garage (extra)", fmtPrice(extra)));
   el.appendChild(detailRow("Total Value", fmtPrice(total)));
-  el.appendChild(detailRow("Closing Costs (0.25%)", fmtPrice(total * 0.0025)));
+  const landRegistryRow = financeLine(el, "Land Registry + Notary (0.3%)");
+  const schuldbriefRow = financeLine(el, "Schuldbrief (0.2%)");
+  const closingCostsRow = financeLine(el, "Closing Costs");
 
   const income = getIncome();
 
@@ -133,12 +134,21 @@ function renderFinance(home) {
 
   const downTotal = financeLine(el, "Down Payment");
   const downSingle = financeLine(el, "Down Payment (Single)");
+  const cashRequired = financeLine(el, "Total Cash Required");
+  const cashRequiredSingle = financeLine(el, "Total Cash Required (Single)");
   const mortgageTotal = financeLine(el, "Mortgage");
   const payInterest = financeLine(el, "Interest / Month");
   const payAmort = financeLine(el, "Amortization / Month");
-  const payTotal = financeLine(el, "Monthly Payment");
+  const payAncillary = financeLine(el, "Ancillary Costs / Month");
+  const payTotal = financeLine(el, "Bank Payment / Month");
   payTotal.classList.add("strong");
+  const payTotalCost = financeLine(el, "Total Cost / Month");
+  payTotalCost.classList.add("strong");
   const affordValue = financeLine(el, "Affordability");
+  const affordCap = document.createElement("p");
+  affordCap.className = "finance-caption";
+  affordCap.textContent = "Based on a 5% stress-test rate, not the selected Interest Rate.";
+  el.appendChild(affordCap);
 
   function update() {
     const equityPct = parseFloat(down.slider.value) / 100;
@@ -149,19 +159,29 @@ function renderFinance(home) {
 
     const downAmount = total * equityPct;
     const mortgage = total - downAmount;
-    const second = Math.max(0, mortgage - total * 0.67);
+    const second = Math.max(0, mortgage - total * FIRST_MORTGAGE_LTV);
+    const ancillaryMonthly = (total * 0.01) / 12;
+    const landRegistryAndNotary = total * 0.003;
+    const schuldbrief = mortgage * 0.002;
     const interestMonthly = (mortgage * ratePct) / 100 / 12;
     const amortMonthly = second / 15 / 12;
 
     downTotal.textContent = fmtPrice(downAmount);
     downSingle.textContent = fmtPrice(downAmount / 2);
+    cashRequired.textContent = fmtPrice(downAmount + landRegistryAndNotary + schuldbrief);
+    cashRequiredSingle.textContent = fmtPrice((downAmount + landRegistryAndNotary + schuldbrief) / 2);
+    landRegistryRow.textContent = fmtPrice(landRegistryAndNotary);
+    schuldbriefRow.textContent = fmtPrice(schuldbrief);
+    closingCostsRow.textContent = fmtPrice(landRegistryAndNotary + schuldbrief);
     mortgageTotal.textContent = fmtPrice(mortgage);
     payInterest.textContent = fmtPrice(interestMonthly);
     payAmort.textContent = fmtPrice(amortMonthly);
+    payAncillary.textContent = fmtPrice(ancillaryMonthly);
     payTotal.textContent = fmtPrice(interestMonthly + amortMonthly) + " / month";
+    payTotalCost.textContent = fmtPrice(interestMonthly + amortMonthly + ancillaryMonthly) + " / month";
 
     if (income && income > 0) {
-      const pct = affordabilityPct(total, income, equityPct);
+      const pct = affordabilityPct(total, income, mortgage, second);
       affordValue.className = "detail-value " + (pct <= 33 ? "ok" : "bad");
       affordValue.textContent = (pct <= 33 ? "Yes" : "No") + " (" + pct.toLocaleString("en-CH", { maximumFractionDigits: 1 }) + "%)";
     } else {
@@ -351,13 +371,24 @@ function render(home) {
 
   const mapEl = document.getElementById("v-map");
   const dirEl = document.getElementById("v-directions");
+  const mapLink = document.getElementById("v-map-open");
+  const dirLink = document.getElementById("v-directions-open");
   mapEl.innerHTML = "";
   dirEl.innerHTML = "";
   if (parts.length > 1) {
     const origin = encodeURIComponent(query);
+    mapLink.href = "https://www.google.com/maps?q=" + origin;
+    mapLink.title = "Open map";
+    mapLink.setAttribute("aria-label", "Open map");
+    dirLink.href =
+      "https://www.google.com/maps/dir/?api=1&origin=" + origin + "&destination=" + encodeURIComponent("Zurich Hauptbahnhof, Switzerland");
+    dirLink.title = "Open directions";
+    dirLink.setAttribute("aria-label", "Open directions");
     lazyMapFrame(mapEl, "https://www.google.com/maps?q=" + origin + "&output=embed");
     lazyMapFrame(dirEl, "https://maps.google.com/maps?saddr=" + origin + "&daddr=" + encodeURIComponent("Zurich Hauptbahnhof, Switzerland") + "&output=embed");
   } else {
+    mapLink.removeAttribute("href");
+    dirLink.removeAttribute("href");
     const p = document.createElement("p");
     p.className = "empty small";
     p.textContent = "No address provided.";
