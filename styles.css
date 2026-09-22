@@ -183,8 +183,13 @@ td.right .btn + .btn { margin-left: 6px; }
 .empty.small { padding: 16px; }
 .table-actions { margin-top: 16px; margin-bottom: 24px; text-align: right; }
 .table-actions .btn.primary { width: auto; }
-.table-tools { margin-bottom: 14px; }
+.table-tools { margin-bottom: 14px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .search-input { max-width: 420px; }
+.table-tools .check { margin: 0; font-size: 0.9rem; color: var(--text); white-space: nowrap; }
+.truncate { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.management-card { display: flex; align-items: center; }
+.management-card .btn { width: auto; }
+h2.section-gap { margin-top: 24px; }
 
 .visits-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .visit-row {

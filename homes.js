@@ -1,4 +1,4 @@
-const state = { homes: [], query: "", sort: { key: null, dir: 1 } };
+const state = { homes: [], query: "", hideRejected: false, sort: { key: null, dir: 1 } };
 
 function sortKey(item, key) {
   const home = item.home;
@@ -125,26 +125,32 @@ function renderTable() {
   body.innerHTML = "";
   const empty = document.getElementById("empty-state");
   const query = state.query.trim().toLowerCase();
-  let list = query
-    ? state.homes.filter((item) =>
-        [
-          item.home.title,
-          item.home.street,
-          item.home.zip,
-          item.home.city,
-          item.home.canton,
-          item.home.realtor_name,
-          item.home.realtor_phone,
-          item.home.realtor_email,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(query)
-      )
-    : state.homes;
+  let list = state.homes;
+  if (state.hideRejected) list = list.filter((item) => item.home.status !== "Rejected");
+  if (query)
+    list = list.filter((item) =>
+      [
+        item.home.title,
+        item.home.street,
+        item.home.zip,
+        item.home.city,
+        item.home.canton,
+        item.home.realtor_name,
+        item.home.realtor_phone,
+        item.home.realtor_email,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
   list = sortedItems(list);
-  empty.textContent = query && !list.length ? "No homes match your search." : "No homes yet \u2014 add your first one.";
+  const filtered = state.hideRejected && !query && !list.length && state.homes.length > 0;
+  empty.textContent = filtered
+    ? "All homes are hidden by the Hide Rejected filter."
+    : query && !list.length
+      ? "No homes match your search."
+      : "No homes yet \u2014 add your first one.";
   empty.hidden = list.length > 0;
 
   list.forEach((item) => {
@@ -169,7 +175,11 @@ function renderTable() {
     cellTitle.textContent = home.title || "Untitled";
     const cellAddress = document.createElement("td");
     cellAddress.className = "muted";
-    cellAddress.textContent = address || "\u2014";
+    const addrSpan = document.createElement("span");
+    addrSpan.className = "truncate";
+    addrSpan.textContent = address || "\u2014";
+    if (address) addrSpan.title = address;
+    cellAddress.appendChild(addrSpan);
     const cellPrice = document.createElement("td");
     cellPrice.className = "num";
     cellPrice.textContent = fmtPrice(home.price);
@@ -261,6 +271,166 @@ document.getElementById("btn-add").addEventListener("click", () => {
 document.getElementById("search").addEventListener("input", (e) => {
   state.query = e.target.value;
   renderTable();
+});
+
+document.getElementById("hide-rejected").addEventListener("change", (e) => {
+  state.hideRejected = e.target.checked;
+  renderTable();
+});
+
+const BACKUP_HOME_COLUMNS = [
+  "id", "user_id", "title", "street", "zip", "city", "canton", "price", "size", "rooms",
+  "built", "renovated", "house_type", "floor", "url", "main_image", "status", "notes",
+  "realtor_name", "realtor_phone", "realtor_email", "garage", "garage_included", "garage_price",
+];
+const BACKUP_VISIT_COLUMNS = ["id", "home_id", "date", "time"];
+const BACKUP_LINK_COLUMNS = ["id", "home_id", "title", "url"];
+
+function sqlLit(v) {
+  if (v === null || v === undefined) return "NULL";
+  if (typeof v === "boolean") return v ? "1" : "0";
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : "NULL";
+  return "'" + String(v).replace(/'/g, "''") + "'";
+}
+
+function sqlInsert(table, columns, row) {
+  return "INSERT INTO " + table + " (" + columns.join(", ") + ") VALUES (" + columns.map((c) => sqlLit(row[c])).join(", ") + ");";
+}
+
+function backupCreateSql() {
+  return [
+    "CREATE TABLE IF NOT EXISTS homes (",
+    "  id TEXT PRIMARY KEY,",
+    "  user_id INTEGER,",
+    "  title TEXT,",
+    "  street TEXT,",
+    "  zip TEXT,",
+    "  city TEXT,",
+    "  canton TEXT,",
+    "  price REAL,",
+    "  size REAL,",
+    "  rooms REAL,",
+    "  built TEXT,",
+    "  renovated TEXT,",
+    "  house_type TEXT,",
+    "  floor TEXT,",
+    "  url TEXT,",
+    "  main_image TEXT,",
+    "  status TEXT,",
+    "  notes TEXT,",
+    "  realtor_name TEXT,",
+    "  realtor_phone TEXT,",
+    "  realtor_email TEXT,",
+    "  garage INTEGER,",
+    "  garage_included INTEGER,",
+    "  garage_price REAL",
+    ");",
+    "CREATE TABLE IF NOT EXISTS visits (",
+    "  id TEXT PRIMARY KEY,",
+    "  home_id TEXT,",
+    "  date TEXT,",
+    "  time TEXT",
+    ");",
+    "CREATE TABLE IF NOT EXISTS links (",
+    "  id TEXT PRIMARY KEY,",
+    "  home_id TEXT,",
+    "  title TEXT,",
+    "  url TEXT",
+    ");",
+  ].join("\n");
+}
+
+async function buildBackupSql() {
+  const base = listPayload(await listHomes(), "homes");
+  const homes = await Promise.all(
+    base.map(async (home) => {
+      try {
+        return await getHome(idOf(home));
+      } catch {
+        const cached = state.homes.find((it) => idOf(it.home) === idOf(home));
+        return { ...home, visits: cached ? cached.visits : [] };
+      }
+    })
+  );
+
+  const lines = [
+    "-- Swiss Home backup",
+    "-- Generated: " + new Date().toISOString(),
+    "-- Homes: " + homes.length,
+    "",
+    "BEGIN;",
+    "",
+    backupCreateSql(),
+    "",
+  ];
+
+  homes.forEach((h) => {
+    const homeId = idOf(h);
+    const homeRow = { ...h, id: homeId, user_id: h.user_id ?? session.userId };
+    lines.push(sqlInsert("homes", BACKUP_HOME_COLUMNS, homeRow));
+    (Array.isArray(h.visits) ? h.visits : []).forEach((v) => {
+      lines.push(sqlInsert("visits", BACKUP_VISIT_COLUMNS, { ...v, id: idOf(v), home_id: homeId }));
+    });
+    (Array.isArray(h.links) ? h.links : []).forEach((l) => {
+      lines.push(sqlInsert("links", BACKUP_LINK_COLUMNS, { ...l, id: idOf(l), home_id: homeId }));
+    });
+  });
+
+  lines.push("");
+  lines.push("COMMIT;");
+  lines.push("");
+  return lines.join("\n");
+}
+
+function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function backupStamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "_" + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+}
+
+const backupModal = document.getElementById("backup-modal");
+
+function openBackupModal() {
+  backupModal.hidden = false;
+}
+
+function closeBackupModal() {
+  backupModal.hidden = true;
+}
+
+document.getElementById("btn-backup").addEventListener("click", openBackupModal);
+document.getElementById("backup-modal-cancel").addEventListener("click", closeBackupModal);
+backupModal.addEventListener("click", (e) => {
+  if (e.target.id === "backup-modal") closeBackupModal();
+});
+
+document.getElementById("backup-modal-ok").addEventListener("click", async () => {
+  closeBackupModal();
+  const btn = document.getElementById("btn-backup");
+  btn.disabled = true;
+  btn.textContent = "Preparing\u2026";
+  try {
+    const sql = await buildBackupSql();
+    downloadText("swisshome_backup_" + backupStamp() + ".sql", sql, "application/sql");
+    toast("Backup downloaded.");
+  } catch (err) {
+    toast(err.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Download Backup";
+  }
 });
 
 document.getElementById("btn-signout").addEventListener("click", signOut);
