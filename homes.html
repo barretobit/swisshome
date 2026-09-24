@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="stylesheet" href="styles.css?v=7" />
   </head>
   <body>
     <div id="toast"></div>
@@ -31,6 +31,7 @@
         <table id="homes-table">
           <thead>
             <tr>
+              <th data-sort="id">Id<span class="sort-arrow">&#8645;</span></th>
               <th data-sort="image">Image<span class="sort-arrow">&#8645;</span></th>
               <th class="main-col" data-sort="title">Title<span class="sort-arrow">&#8645;</span></th>
               <th data-sort="realtor">Realtor<span class="sort-arrow">&#8645;</span></th>
@@ -73,6 +74,10 @@
       </div>
     </main>
 
+    <div id="lightbox" class="lightbox" hidden>
+      <img id="lightbox-img" alt="">
+    </div>
+
     <div id="backup-modal" class="modal" hidden>
       <div class="modal-box card">
         <p>Download a SQL backup file with all your homes, visits and links?</p>
@@ -83,7 +88,7 @@
       </div>
     </div>
 
-    <script src="common.js?v=3"></script>
-    <script src="homes.js?v=3"></script>
+    <script src="common.js?v=7"></script>
+    <script src="homes.js?v=7"></script>
   </body>
 </html>

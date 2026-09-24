@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
   <div id="toast"></div>
@@ -68,7 +68,18 @@
           <option>House</option>
         </select>
       </label>
-      <label id="house-floor-wrap" hidden><span id="house-floor-label">Floor</span><input id="f-floor" type="number" min="0" step="1" placeholder="2"></label>
+      <label id="house-floor-wrap" hidden><span id="house-floor-label">Floor</span>
+        <select id="f-floor">
+          <option value="">&mdash;</option>
+          <option value="0">EG</option>
+          <option value="1">1 OG</option>
+          <option value="2">2 OG</option>
+          <option value="3">3 OG</option>
+          <option value="4">4 OG</option>
+          <option value="5">5 OG</option>
+        </select>
+      </label>
+      <label id="house-floors-wrap" hidden>Floors<input id="f-building-floors" type="number" min="1" step="1" placeholder="2"></label>
       <label>Built Year<input id="f-built" type="number" min="1500" max="2100" placeholder="2019"></label>
       <label>Last Renovation Year<input id="f-renovated" type="number" min="1500" max="2100" placeholder="2024"></label>
 
@@ -133,7 +144,7 @@
     </div>
   </main>
 
-  <script src="common.js?v=2"></script>
-  <script src="home.js?v=2"></script>
+  <script src="common.js?v=7"></script>
+  <script src="home.js?v=4"></script>
 </body>
 </html>

@@ -111,6 +111,10 @@ function idOf(obj) {
   return obj && (obj.home_id ?? obj.id ?? obj.visit_id ?? obj.link_id);
 }
 
+function childId(obj) {
+  return obj && (obj.id ?? obj.link_id ?? obj.visit_id);
+}
+
 function listPayload(payload, key) {
   if (payload && Array.isArray(payload[key])) return payload[key];
   if (Array.isArray(payload)) return payload;
@@ -152,6 +156,94 @@ const STATUS_STYLE = {
 
 const STATUS_ORDER = ["Awaiting Information", "Reviewing Information", "In Contact", "Applied for Visit", "To Visit", "Thinking", "Rejected"];
 
+function statusPicker(value, onChange) {
+  let current = value || "";
+  const wrap = document.createElement("span");
+  wrap.className = "status-picker";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "badge status-btn";
+  btn.setAttribute("aria-haspopup", "true");
+  btn.setAttribute("aria-label", "Change status");
+
+  const menu = document.createElement("div");
+  menu.className = "status-menu";
+  menu.hidden = true;
+
+  function renderLabel() {
+    btn.className = "badge status-btn " + (STATUS_STYLE[current] || "gray");
+    btn.textContent = current || "\u2014";
+  }
+
+  function renderItems() {
+    menu.innerHTML = "";
+    const add = (value, label) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "badge " + (STATUS_STYLE[value] || "gray");
+      item.textContent = label;
+      item.addEventListener("click", () => {
+        close();
+        if (value !== current) {
+          current = value;
+          renderLabel();
+        }
+        if (onChange) onChange(value);
+      });
+      menu.appendChild(item);
+    };
+    add("", "\u2014");
+    STATUS_ORDER.forEach((s) => add(s, s));
+  }
+
+  function onKey(e) {
+    if (e.key === "Escape") close();
+  }
+
+  function onDoc(e) {
+    if (!wrap.contains(e.target)) close();
+  }
+
+  function open() {
+    renderItems();
+    const r = btn.getBoundingClientRect();
+    menu.style.top = r.bottom + 6 + "px";
+    menu.style.left = Math.min(r.left, window.innerWidth - 180) + "px";
+    menu.hidden = false;
+    document.addEventListener("click", onDoc);
+    document.addEventListener("keydown", onKey);
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  function close() {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    menu.innerHTML = "";
+    document.removeEventListener("click", onDoc);
+    document.removeEventListener("keydown", onKey);
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  btn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    ev.preventDefault();
+    menu.hidden ? open() : close();
+  });
+  btn.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault();
+      menu.hidden ? open() : close();
+    }
+  });
+
+  wrap.appendChild(btn);
+  wrap.appendChild(menu);
+  renderLabel();
+
+  return { el: wrap, set: (v) => { current = v || ""; renderLabel(); } };
+}
+
 function nowKey() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, "0");
@@ -169,10 +261,25 @@ function nextVisit(visits) {
   return vs[0] || null;
 }
 
+function fmtTime(t) {
+  if (t == null || t === "") return "";
+  const parts = String(t).split(":");
+  return parts.length > 2 ? parts[0] + ":" + parts[1] : String(t);
+}
+
 function fmtVisit(v) {
   const d = new Date(visitKey(v));
   const date = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-  return date + (v.time ? ", " + v.time : "");
+  return date + (v.time ? ", " + fmtTime(v.time) : "");
+}
+
+function floorLabel(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  if (n === 0) return "EG";
+  if (n >= 1 && n <= 5) return String(n) + " OG";
+  return String(n);
 }
 
 let toastTimer;

@@ -139,7 +139,7 @@ function renderFinance(home) {
   const mortgageTotal = financeLine(el, "Mortgage");
   const payInterest = financeLine(el, "Interest / Month");
   const payAmort = financeLine(el, "Amortization / Month");
-  const payAncillary = financeLine(el, "Ancillary Costs / Month");
+  const payAncillary = financeLine(el, "Nebenkosten / Month");
   const payTotal = financeLine(el, "Bank Payment / Month");
   payTotal.classList.add("strong");
   const payTotalCost = financeLine(el, "Total Cost / Month");
@@ -339,8 +339,14 @@ function render(home) {
   details.appendChild(detailRow("Rooms", fmtRooms(home.rooms)));
 
   let typeInfo = home.house_type || "\u2014";
-  if (home.house_type && home.floor != null && home.floor !== "") {
-    typeInfo += home.house_type === "House" ? " (" + home.floor + " floors)" : " (" + home.floor + " floor)";
+  if (home.house_type === "House") {
+    const n = Number(home.floor);
+    if (!Number.isNaN(n)) {
+      typeInfo += " (" + n + (n === 1 ? " floor" : " floors") + ")";
+    }
+  } else {
+    const fl = floorLabel(home.floor);
+    if (fl != null) typeInfo += " (" + fl + ")";
   }
   details.appendChild(detailRow("House Type", typeInfo));
   details.appendChild(detailRow("Built", home.built ? String(home.built) : "\u2014"));
@@ -352,12 +358,17 @@ function render(home) {
   }
   details.appendChild(detailRow("Garage", garageText));
 
-  const status = home.status || "";
-  const badge = document.createElement("span");
-  badge.className = "badge";
-  badge.textContent = status || "\u2014";
-  if (status) badge.classList.add(STATUS_STYLE[status] || "gray");
-  details.appendChild(detailRow("Status", badge));
+  const statusPick = statusPicker(home.status, async (next) => {
+    try {
+      await updateHome(state.id, { status: next || null });
+      home.status = next || null;
+      toast("Status updated.");
+    } catch (err) {
+      statusPick.set(home.status || "");
+      toast(err.message, false);
+    }
+  });
+  details.appendChild(detailRow("Status", statusPick.el));
 
   details.appendChild(detailRow("Listing URL", urlLink(home.url)));
 

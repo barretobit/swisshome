@@ -137,11 +137,11 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.right, th.right { text-align: right; }
 td.right { white-space: nowrap; }
 td.right .btn + .btn { margin-left: 6px; }
-.thumb { display: block; width: 36px; height: 36px; object-fit: cover; border-radius: 7px; }
+.thumb { display: block; width: 36px; height: 36px; object-fit: cover; border-radius: 7px; cursor: zoom-in; }
 .main-col { width: 34%; white-space: nowrap; }
-.wrap.wide { max-width: 1440px; }
+.wrap.wide { max-width: 1550px; }
 @media (min-width: 1280px) {
-  .wrap.wide { max-width: min(1440px, calc(100vw - 48px)); }
+  .wrap.wide { max-width: min(1550px, calc(100vw - 48px)); }
 }
 
 .badge { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; }
@@ -150,6 +150,54 @@ td.right .btn + .btn { margin-left: 6px; }
 .badge.amber { background: #fef7e0; color: #b06000; }
 .badge.gray { background: #f1f3f4; color: #5f6368; }
 .badge.red { background: #fce8e6; color: #c5221f; }
+
+.status-picker { position: relative; display: inline-block; }
+button.status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+}
+button.status-btn::after {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-top: 1px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  opacity: 0.65;
+}
+button.status-btn:hover { filter: brightness(0.96); }
+.status-menu {
+  position: fixed;
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 170px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+.status-menu button {
+  display: block;
+  width: 100%;
+  border: none;
+  margin: 0;
+  padding: 5px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.status-menu button:hover { filter: brightness(0.96); }
 
 .check { display: flex; align-items: center; gap: 10px; }
 .check input[type="checkbox"] {

@@ -15,20 +15,21 @@ function num(id) {
 function fmtVisit(v) {
   const d = v.date ? new Date(v.date + "T" + (v.time || "00:00")) : null;
   const date = d ? d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "";
-  return (date ? date : "") + (v.time ? ", " + v.time : "");
+  return (date ? date : "") + (v.time ? ", " + fmtTime(v.time) : "");
 }
 
 function updateHouseTypeUI() {
   const type = $("f-house-type").value;
-  const wrap = $("house-floor-wrap");
-  if (type === "Apartment" || type === "Duplex") {
+  if (type === "House") {
+    $("house-floor-wrap").hidden = true;
+    $("house-floors-wrap").hidden = false;
+  } else if (type === "Apartment" || type === "Duplex") {
     $("house-floor-label").textContent = "Floor";
-    wrap.hidden = false;
-  } else if (type === "House") {
-    $("house-floor-label").textContent = "Floors";
-    wrap.hidden = false;
+    $("house-floor-wrap").hidden = false;
+    $("house-floors-wrap").hidden = true;
   } else {
-    wrap.hidden = true;
+    $("house-floor-wrap").hidden = true;
+    $("house-floors-wrap").hidden = true;
   }
 }
 
@@ -119,6 +120,7 @@ function fillForm(home) {
   $("f-renovated").value = home.renovated ?? "";
   $("f-house-type").value = home.house_type || "";
   $("f-floor").value = home.floor ?? "";
+  $("f-building-floors").value = home.floor ?? "";
   $("f-url").value = home.url || "";
   $("f-main-image").value = home.main_image || "";
   $("f-status").value = home.status || "";
@@ -131,11 +133,11 @@ function fillForm(home) {
   $("f-garage-price").value = home.garage_price ?? "";
   updateHouseTypeUI();
   updateGarageUI();
-  state.visits = (Array.isArray(home.visits) ? home.visits : []).map((v) => ({ id: idOf(v), date: v.date, time: v.time }));
+  state.visits = (Array.isArray(home.visits) ? home.visits : []).map((v) => ({ id: childId(v), date: v.date, time: v.time }));
   state.serverVisitIds = new Set(state.visits.map((v) => v.id).filter((v) => v != null));
   renderVisits();
   const rawLinks = Array.isArray(home.links) ? home.links : [];
-  state.links = rawLinks.map((l) => ({ id: idOf(l), title: l.title, url: l.url }));
+  state.links = rawLinks.map((l) => ({ id: childId(l), title: l.title, url: l.url }));
   state.serverLinkIds = new Set(state.links.map((l) => l.id).filter((l) => l != null));
   renderLinks();
 }
@@ -154,7 +156,7 @@ function collectHome() {
     built: num("f-built"),
     renovated: num("f-renovated"),
     house_type: val("f-house-type") || null,
-    floor: num("f-floor"),
+    floor: $("f-house-type").value === "House" ? num("f-building-floors") : num("f-floor"),
     url: val("f-url") || null,
     main_image: val("f-main-image") || null,
     status: val("f-status") || null,

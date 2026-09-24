@@ -3,6 +3,8 @@ const state = { homes: [], query: "", hideRejected: false, sort: { key: null, di
 function sortKey(item, key) {
   const home = item.home;
   switch (key) {
+    case "id":
+      return idOf(home);
     case "image":
       return home.main_image ? "0" : "1";
     case "title":
@@ -109,7 +111,7 @@ function renderVisits() {
     const cellDate = document.createElement("td");
     cellDate.textContent = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
     const cellTime = document.createElement("td");
-    cellTime.textContent = r.v.time || "\u2014";
+    cellTime.textContent = r.v.time ? fmtTime(r.v.time) : "\u2014";
     tr.appendChild(cellProp);
     tr.appendChild(cellAddr);
     tr.appendChild(cellRealtor);
@@ -165,9 +167,14 @@ function renderTable() {
       img.src = home.main_image;
       img.alt = (home.title || "Home") + " thumbnail";
       img.loading = "lazy";
+      img.title = "Click to enlarge";
       img.onerror = () => {
         img.style.display = "none";
       };
+      img.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openLightbox(home.main_image, img.alt);
+      });
       cellImg.appendChild(img);
     }
     const cellTitle = document.createElement("td");
@@ -193,12 +200,18 @@ function renderTable() {
     cellPhone.className = "muted";
     cellPhone.textContent = home.realtor_phone || "\u2014";
     const cellStatus = document.createElement("td");
-    const badge = document.createElement("span");
-    badge.className = "badge";
-    const status = home.status || "";
-    badge.textContent = status || "\u2014";
-    if (status) badge.classList.add(STATUS_STYLE[status] || "gray");
-    cellStatus.appendChild(badge);
+    const statusPick = statusPicker(home.status, async (next) => {
+      try {
+        await updateHome(idOf(home), { status: next || null });
+        home.status = next || null;
+        toast("Status updated.");
+      } catch (err) {
+        toast(err.message, false);
+      }
+      renderTable();
+    });
+    statusPick.el.addEventListener("click", (ev) => ev.stopPropagation());
+    cellStatus.appendChild(statusPick.el);
     const cellActions = document.createElement("td");
     cellActions.className = "right";
     const btnDel = button("\uD83D\uDDD1", ["btn", "ghost", "sm", "danger"]);
@@ -223,6 +236,11 @@ function renderTable() {
     });
     cellActions.appendChild(btnEdit);
 
+    const cellId = document.createElement("td");
+    cellId.className = "muted num";
+    cellId.textContent = idOf(home);
+
+    tr.appendChild(cellId);
     tr.appendChild(cellImg);
     tr.appendChild(cellTitle);
     tr.appendChild(cellRealtor);
@@ -262,6 +280,22 @@ async function load() {
     state.homes = [];
   }
   renderTable();
+}
+
+function openLightbox(src, alt) {
+  const box = document.getElementById("lightbox");
+  const img = document.getElementById("lightbox-img");
+  if (!box || !img) return;
+  img.src = src;
+  img.alt = alt || "";
+  box.hidden = false;
+}
+
+function closeLightbox() {
+  const box = document.getElementById("lightbox");
+  if (!box || box.hidden) return;
+  box.hidden = true;
+  document.getElementById("lightbox-img").src = "";
 }
 
 document.getElementById("btn-add").addEventListener("click", () => {
@@ -369,10 +403,10 @@ async function buildBackupSql() {
     const homeRow = { ...h, id: homeId, user_id: h.user_id ?? session.userId };
     lines.push(sqlInsert("homes", BACKUP_HOME_COLUMNS, homeRow));
     (Array.isArray(h.visits) ? h.visits : []).forEach((v) => {
-      lines.push(sqlInsert("visits", BACKUP_VISIT_COLUMNS, { ...v, id: idOf(v), home_id: homeId }));
+      lines.push(sqlInsert("visits", BACKUP_VISIT_COLUMNS, { ...v, id: childId(v), home_id: homeId }));
     });
     (Array.isArray(h.links) ? h.links : []).forEach((l) => {
-      lines.push(sqlInsert("links", BACKUP_LINK_COLUMNS, { ...l, id: idOf(l), home_id: homeId }));
+      lines.push(sqlInsert("links", BACKUP_LINK_COLUMNS, { ...l, id: childId(l), home_id: homeId }));
     });
   });
 
@@ -434,6 +468,14 @@ document.getElementById("backup-modal-ok").addEventListener("click", async () =>
 });
 
 document.getElementById("btn-signout").addEventListener("click", signOut);
+
+const lightbox = document.getElementById("lightbox");
+if (lightbox) {
+  lightbox.addEventListener("click", closeLightbox);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeLightbox();
+  });
+}
 
 wireSort();
 
