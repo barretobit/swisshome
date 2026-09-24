@@ -148,13 +148,12 @@ const STATUS_STYLE = {
   "Awaiting Information": "gray",
   "Reviewing Information": "gray",
   "Applied for Visit": "amber",
-  "In Contact": "blue",
   "To Visit": "green",
   Rejected: "red",
-  Thinking: "amber",
+  Thinking: "blue",
 };
 
-const STATUS_ORDER = ["Awaiting Information", "Reviewing Information", "In Contact", "Applied for Visit", "To Visit", "Thinking", "Rejected"];
+const STATUS_ORDER = ["Awaiting Information", "Reviewing Information", "Applied for Visit", "To Visit", "Thinking", "Rejected"];
 
 function statusPicker(value, onChange) {
   let current = value || "";
